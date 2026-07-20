@@ -6,17 +6,15 @@ import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
+  title: "Tienda de moda femenina",
   description:
-    "A performant frontend ecommerce starter template with Next.js 15 and Medusa.",
+    "Moda femenina, calzado y accesorios con despacho a todo Chile.",
 }
 
 export default async function Home(props: {
   params: Promise<{ countryCode: string }>
 }) {
-  const params = await props.params
-
-  const { countryCode } = params
+  const { countryCode } = await props.params
 
   const region = await getRegion(countryCode)
 
@@ -24,18 +22,23 @@ export default async function Home(props: {
     fields: "id, handle, title",
   })
 
-  if (!collections || !region) {
-    return null
-  }
-
   return (
     <>
       <Hero />
-      <div className="py-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
-        </ul>
-      </div>
+
+      {region && collections?.length > 0 ? (
+        <div className="py-12">
+          <ul className="flex flex-col gap-x-6">
+            <FeaturedProducts collections={collections} region={region} />
+          </ul>
+        </div>
+      ) : (
+        <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
+          <p className="text-center text-sm text-neutral-500">
+            Los productos destacados estarán disponibles próximamente.
+          </p>
+        </section>
+      )}
     </>
   )
 }

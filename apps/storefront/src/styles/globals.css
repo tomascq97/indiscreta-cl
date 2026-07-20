@@ -2,6 +2,36 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+:root {
+  --color-ink: #111111;
+  --color-white: #ffffff;
+  --color-canvas: #faf8f5;
+  --color-beige: #ede4da;
+  --color-rose: #d8b4b0;
+  --color-rose-dark: #a87875;
+  --color-muted: #66615d;
+  --color-border: #e4dfda;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-rose);
+  color: var(--color-ink);
+}
+
 @layer utilities {
   /* Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
@@ -108,5 +138,90 @@
 
   .text-3xl-semi {
     @apply text-[32px] leading-[44px] font-semibold;
+  }
+    .font-editorial {
+    font-family: var(--font-editorial), serif;
+  }
+
+  .font-sans {
+    font-family: var(--font-sans), sans-serif;
+  }
+
+  .store-container {
+    @apply mx-auto w-full max-w-[1440px] px-5 md:px-8 lg:px-12;
+  }
+
+  .section-spacing {
+    @apply py-16 md:py-24 lg:py-32;
+  }
+
+  .editorial-eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.32em];
+    color: var(--color-muted);
+  }
+
+  .editorial-title {
+    font-family: var(--font-editorial), serif;
+    @apply text-5xl font-medium leading-[0.95] tracking-[-0.025em] md:text-7xl lg:text-8xl;
+  }
+
+  .section-title {
+    font-family: var(--font-editorial), serif;
+    @apply text-4xl font-medium leading-none tracking-[-0.02em] md:text-6xl;
+  }
+
+  .body-copy {
+    @apply text-sm leading-7 md:text-base;
+    color: var(--color-muted);
+  }
+
+  .btn-primary {
+    @apply inline-flex min-h-12 items-center justify-center px-7 text-xs font-semibold uppercase tracking-[0.12em] transition duration-300;
+    background: var(--color-ink);
+    color: var(--color-white);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-rose-dark);
+  }
+
+  .btn-secondary {
+    @apply inline-flex min-h-12 items-center justify-center border px-7 text-xs font-semibold uppercase tracking-[0.12em] transition duration-300;
+    border-color: var(--color-ink);
+    color: var(--color-ink);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-ink);
+    color: var(--color-white);
+  }
+}
+
+
+
+
+
+
+@keyframes storefront-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: storefront-marquee 28s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
   }
 }
