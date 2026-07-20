@@ -1,3 +1,4 @@
+import Image from "next/image"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 export default function Hero() {
@@ -30,18 +31,17 @@ export default function Hero() {
           </div>
         </div>
 
-        <div
-          className="relative min-h-[520px] overflow-hidden md:min-h-[640px]"
-          style={{ backgroundColor: "var(--color-beige)" }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="editorial-eyebrow">Imagen de campaña</span>
-          </div>
-
-          <div
-            className="absolute bottom-0 left-0 h-28 w-28"
-            style={{ backgroundColor: "var(--color-rose)" }}
+        <div className="relative aspect-square w-full overflow-hidden bg-[var(--color-beige)]">
+          <Image
+            src="/images/home/hero-campaign.png"
+            alt="Mujer luciendo una propuesta de moda femenina en tonos beige y rosado"
+            fill
+            priority
+            sizes="(max-width: 767px) 100vw, 50vw"
+            className="object-cover object-center"
           />
+
+          <div className="pointer-events-none absolute inset-0 bg-black/5" />
         </div>
       </div>
     </section>
