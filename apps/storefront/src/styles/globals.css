@@ -5,12 +5,12 @@
 :root {
   --color-ink: #111111;
   --color-white: #ffffff;
-  --color-canvas: #faf8f5;
-  --color-beige: #ede4da;
-  --color-rose: #d8b4b0;
-  --color-rose-dark: #a87875;
-  --color-muted: #66615d;
-  --color-border: #e4dfda;
+  --color-canvas: #f8f7f5;
+  --color-beige: #eadfd4;
+  --color-rose: #e65b7a;
+  --color-rose-dark: #d94a6c;
+  --color-muted: #6b7280;
+  --color-border: #e5e5e5;
 }
 
 html {

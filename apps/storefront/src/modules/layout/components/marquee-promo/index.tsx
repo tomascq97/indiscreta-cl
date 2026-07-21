@@ -1,21 +1,27 @@
 const messages = [
-  "Envíos a todo Chile",
-  "Hasta 6 cuotas sin interés",
   "Envío gratis sobre $80.000",
-  "Retiro disponible",
+  "Hasta 6 cuotas sin interés",
+  "Cambios y devoluciones gratis",
 ]
 
 export default function MarqueePromo() {
   return (
-    <div className="overflow-hidden border-b border-neutral-800 bg-neutral-950 py-2 text-white">
-      <div className="marquee-track flex w-max whitespace-nowrap">
+    <div className="overflow-hidden bg-black py-2.5 text-white">
+      <div className="marquee-track flex w-max items-center whitespace-nowrap">
         {[...messages, ...messages].map((message, index) => (
-          <span
+          <div
             key={`${message}-${index}`}
-            className="mx-10 text-xs font-medium uppercase tracking-[0.16em]"
+            className="flex items-center"
           >
-            {message}
-          </span>
+            <span className="mx-10 text-[10px] font-medium uppercase tracking-[0.14em] sm:text-[11px]">
+              {message}
+            </span>
+
+            <span
+              aria-hidden="true"
+              className="h-1 w-1 rounded-full bg-white/70"
+            />
+          </div>
         ))}
       </div>
     </div>
