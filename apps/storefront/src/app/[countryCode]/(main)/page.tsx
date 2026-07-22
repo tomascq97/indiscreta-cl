@@ -1,16 +1,15 @@
 import { Metadata } from "next"
 
-import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
-import { listCollections } from "@lib/data/collections"
-import { getRegion } from "@lib/data/regions"
 import StoreBenefits from "@modules/home/components/store-benefits"
 import ShopByCategory from "@modules/home/components/shop-by-category"
+import NewCollectionBanner from "@modules/home/components/new-collection-banner"
+import NewArrivals from "@modules/home/components/new-arrivals"
 
 export const metadata: Metadata = {
-  title: "Tienda de moda femenina",
+  title: "Indiscreta | Moda femenina, calzado y accesorios",
   description:
-    "Moda femenina, calzado y accesorios con despacho a todo Chile.",
+    "Descubre Indiscreta: moda femenina, calzado y accesorios para mujeres que no pasan desapercibidas. Despachos a todo Chile.",
 }
 
 export default async function Home(props: {
@@ -18,31 +17,13 @@ export default async function Home(props: {
 }) {
   const { countryCode } = await props.params
 
-  const region = await getRegion(countryCode)
-
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
   return (
     <>
       <Hero />
       <StoreBenefits />
       <ShopByCategory />
-
-      {region && collections?.length > 0 ? (
-        <div className="py-12">
-          <ul className="flex flex-col gap-x-6">
-            <FeaturedProducts collections={collections} region={region} />
-          </ul>
-        </div>
-      ) : (
-        <section className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-          <p className="text-center text-sm text-neutral-500">
-            Los productos destacados estarán disponibles próximamente.
-          </p>
-        </section>
-      )}
+      <NewCollectionBanner />
+      <NewArrivals countryCode={countryCode} />
     </>
   )
 }

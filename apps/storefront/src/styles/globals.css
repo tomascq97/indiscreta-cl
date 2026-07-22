@@ -11,6 +11,8 @@
   --color-rose-dark: #d94a6c;
   --color-muted: #6b7280;
   --color-border: #e5e5e5;
+  --color-rose: #E85D8E;
+  --color-rose-dark: #D94B7E;
 }
 
 html {
@@ -223,5 +225,37 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
     animation: none;
+  }
+}
+/* Identidad de marca: Indiscreta */
+
+.brand-wordmark {
+  font-family:
+    "Bernhard Fashion BT",
+    "Bodoni 72",
+    "Bodoni MT",
+    Didot,
+    "Times New Roman",
+    serif;
+
+  font-weight: 400;
+  line-height: 0.85;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.brand-tagline {
+  font-family: var(--font-manrope), Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-rose);
+}
+
+@media (min-width: 640px) {
+  .brand-tagline {
+    font-size: 11px;
   }
 }

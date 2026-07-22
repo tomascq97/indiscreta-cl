@@ -77,7 +77,7 @@ export default async function Nav() {
 
       <header className="border-b border-neutral-200 bg-white">
         <div className="store-container">
-          <div className="grid h-[76px] grid-cols-3 items-center lg:h-[82px]">
+          <div className="grid h-[88px] grid-cols-3 items-center sm:h-[104px] lg:h-[112px]">
             <div className="flex items-center gap-6">
               <SideMenu
                 regions={regions}
@@ -97,10 +97,26 @@ export default async function Nav() {
             <div className="flex justify-center">
               <LocalizedClientLink
                 href="/"
-                className="font-editorial text-[30px] font-medium uppercase tracking-[0.34em] text-black sm:text-[34px] lg:text-[38px]"
+                className="group flex flex-col items-center justify-center"
                 data-testid="nav-store-link"
+                aria-label="Indiscreta, ir al inicio"
               >
-                Lumé
+                <span className="relative">
+                  <span
+                    aria-hidden="true"
+                    className="absolute -left-4 -top-3 text-[var(--color-rose)] sm:-left-5"
+                  >
+                    ✦
+                  </span>
+
+                  <span className="brand-wordmark text-[29px] text-black sm:text-[38px] lg:text-[46px]">
+                    Indiscreta
+                  </span>
+                </span>
+
+                <span className="brand-tagline mt-3 hidden whitespace-nowrap sm:block">
+                  Elegancia para todos tus días
+                </span>
               </LocalizedClientLink>
             </div>
 

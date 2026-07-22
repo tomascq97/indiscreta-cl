@@ -136,7 +136,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                         />
                       </div>
                       <Text className="flex justify-between text-xs text-white/60">
-                        © {new Date().getFullYear()} Lumé. Todos los derechos reservados.
+                        © {new Date().getFullYear()} Indiscreta. Todos los derechos reservados.
                       </Text>
                     </div>
                   </div>
