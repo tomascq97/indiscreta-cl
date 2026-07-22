@@ -30,7 +30,7 @@ export default async function NewArrivals({
 }
 
   return (
-    <section className="bg-white py-14 sm:py-16 lg:py-20">
+    <section className="bg-white pb-8 pt-12 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16">
       <div className="store-container">
         <div className="mb-8 flex items-end justify-between sm:mb-10">
           <div>
