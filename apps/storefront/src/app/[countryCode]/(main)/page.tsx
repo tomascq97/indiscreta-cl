@@ -1,41 +1,29 @@
 import { Metadata } from "next"
 
-import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
-import { listCollections } from "@lib/data/collections"
-import { getRegion } from "@lib/data/regions"
+import StoreBenefits from "@modules/home/components/store-benefits"
+import ShopByCategory from "@modules/home/components/shop-by-category"
+import NewCollectionBanner from "@modules/home/components/new-collection-banner"
+import NewArrivals from "@modules/home/components/new-arrivals"
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
+  title: "Indiscreta | Moda femenina, calzado y accesorios",
   description:
-    "A performant frontend ecommerce starter template with Next.js 15 and Medusa.",
+    "Descubre Indiscreta: moda femenina, calzado y accesorios para mujeres que no pasan desapercibidas. Despachos a todo Chile.",
 }
 
 export default async function Home(props: {
   params: Promise<{ countryCode: string }>
 }) {
-  const params = await props.params
-
-  const { countryCode } = params
-
-  const region = await getRegion(countryCode)
-
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
-  if (!collections || !region) {
-    return null
-  }
+  const { countryCode } = await props.params
 
   return (
     <>
       <Hero />
-      <div className="py-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
-        </ul>
-      </div>
+      <StoreBenefits />
+      <ShopByCategory />
+      <NewCollectionBanner />
+      <NewArrivals countryCode={countryCode} />
     </>
   )
 }

@@ -10,7 +10,7 @@ import { retrieveCustomer } from "@lib/data/customer"
 
 export const metadata: Metadata = {
   title: "Profile",
-  description: "View and edit your Medusa Store profile.",
+  description: "Consulta y edita tu perfil de Indiscreta.",
 }
 
 export default async function Profile() {
@@ -26,9 +26,9 @@ export default async function Profile() {
       <div className="mb-8 flex flex-col gap-y-4">
         <h1 className="text-2xl-semi">Profile</h1>
         <p className="text-base-regular">
-          View and update your profile information, including your name, email,
-          and phone number. You can also update your billing address, or change
-          your password.
+          Consulta y actualiza la información de tu perfil, incluidos tu nombre, correo electrónico
+          y número de teléfono. También puedes actualizar tu dirección de facturación o cambiar
+          tu contraseña.
         </p>
       </div>
       <div className="flex flex-col gap-y-8 w-full">
