@@ -60,3 +60,14 @@ Join our [Discord server](https://discord.com/invite/medusajs) to meet other com
 - [Twitter](https://twitter.com/medusajs)
 - [LinkedIn](https://www.linkedin.com/company/medusajs)
 - [Medusa Blog](https://medusajs.com/blog/)
+
+# Local product images
+
+Medusa's default local file provider writes uploaded files to `static/`. This
+directory is intentionally ignored by Git: its contents are runtime data, can
+grow without bound, and are publicly served by the backend.
+
+Use the local provider only for development. Back up `static/` before replacing
+or recreating a local environment. In production, use Medusa Cloud's managed S3
+storage or configure Medusa's S3 file provider; do not rely on an ephemeral
+application filesystem and do not commit uploaded customer or product files.
