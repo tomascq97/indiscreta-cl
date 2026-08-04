@@ -141,7 +141,8 @@ jobs:
         run: |
           setsid pnpm --dir apps/backend/.medusa/server run start:server > "$RUNNER_TEMP/medusa-server.log" 2>&1 &
           server_pid=$!
-          setsid pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
+          # The alternate port prevents collisions in this single CI runner; it does not expose the worker publicly.
+          setsid env PORT=9001 pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
           worker_pid=$!
 
           cleanup() {
