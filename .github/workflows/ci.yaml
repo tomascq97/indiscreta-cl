@@ -78,6 +78,7 @@ jobs:
         shell: bash
         run: |
           pnpm exec turbo build --filter=@dtc/backend --force
+          pnpm --dir apps/backend/.medusa/server install --prod --no-frozen-lockfile
 
           setsid pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
           medusa_pid=$!
