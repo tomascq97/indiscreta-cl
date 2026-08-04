@@ -1,5 +1,5 @@
-import { HttpTypes } from "@medusajs/types"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import type { HttpTypes } from "@medusajs/types"
+import type { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 
 interface MinPricedProduct extends HttpTypes.StoreProduct {
   _minPrice?: number
@@ -21,18 +21,28 @@ export function sortProducts(
     // Precompute the minimum price for each product
     sortedProducts.forEach((product) => {
       if (product.variants && product.variants.length > 0) {
-        product._minPrice = Math.min(
-          ...product.variants.map(
-            (variant) => variant?.calculated_price?.calculated_amount || 0
-          )
-        )
+        const prices = product.variants
+          .map((variant) => variant?.calculated_price?.calculated_amount)
+          .filter((price): price is number => typeof price === "number")
+
+        product._minPrice = prices.length
+          ? Math.min(...prices)
+          : Infinity
       } else {
         product._minPrice = Infinity
       }
     })
 
-    // Sort products based on the precomputed minimum prices
+    // Keep products without a calculable price last in both directions
     sortedProducts.sort((a, b) => {
+      if (!Number.isFinite(a._minPrice)) {
+        return Number.isFinite(b._minPrice) ? 1 : 0
+      }
+
+      if (!Number.isFinite(b._minPrice)) {
+        return -1
+      }
+
       const diff = a._minPrice! - b._minPrice!
       return sortBy === "price_asc" ? diff : -diff
     })

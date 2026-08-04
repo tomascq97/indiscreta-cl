@@ -7,9 +7,10 @@
   },
   "scripts": {
     "dev": "pnpm -r dev",
-    "build": "pnpm -r build",
+    "build": "turbo build",
     "start": "turbo start",
     "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
     "test": "turbo test",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
