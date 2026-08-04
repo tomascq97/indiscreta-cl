@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: medusa_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d medusa_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/medusa_ci
+      STORE_CORS: http://localhost:8000
+      ADMIN_CORS: http://localhost:7001
+      AUTH_CORS: http://localhost:7001,http://localhost:8000
+      JWT_SECRET: ci-only-placeholder
+      COOKIE_SECRET: ci-only-placeholder
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Migrate and seed isolated Medusa database
+        working-directory: apps/backend
+        run: pnpm exec medusa db:migrate
+
+      - name: Export CI publishable key
+        shell: bash
+        run: |
+          publishable_key="$(psql "$DATABASE_URL" --tuples-only --no-align --command="SELECT token FROM api_key WHERE type = 'publishable' AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1")"
+          if [[ -z "$publishable_key" ]]; then
+            echo "No publishable API key was created by the CI seed." >&2
+            exit 1
+          fi
+          echo "::add-mask::$publishable_key"
+          echo "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$publishable_key" >> "$GITHUB_ENV"
+
+      - name: Build backend and storefront against Medusa
+        shell: bash
+        run: |
+          pnpm exec turbo build --filter=@dtc/backend --force
+          ln -s "$GITHUB_WORKSPACE/apps/backend/node_modules" apps/backend/.medusa/server/node_modules
+
+          setsid pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
+          medusa_pid=$!
+
+          cleanup() {
+            kill -- "-$medusa_pid" 2>/dev/null || true
+            wait "$medusa_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          healthy=false
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error http://localhost:9000/health > /dev/null; then
+              healthy=true
+              break
+            fi
+
+            if ! kill -0 "$medusa_pid" 2>/dev/null; then
+              echo "Medusa stopped before becoming healthy." >&2
+              tail -n 100 "$RUNNER_TEMP/medusa.log" >&2
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          if [[ "$healthy" != "true" ]]; then
+            echo "Medusa did not become healthy within 120 seconds." >&2
+            tail -n 100 "$RUNNER_TEMP/medusa.log" >&2
+            exit 1
+          fi
+
+          pnpm exec turbo build --filter=@dtc/storefront --force
