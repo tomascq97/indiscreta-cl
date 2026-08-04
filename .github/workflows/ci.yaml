@@ -36,6 +36,7 @@ jobs:
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://medusa-ci.internal:9000
       NEXT_PUBLIC_BASE_URL: https://storefront-ci.invalid
       TEST_BACKEND_URL: http://localhost:9000
+      ALLOW_COMMERCIAL_FLOW_TEST: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
