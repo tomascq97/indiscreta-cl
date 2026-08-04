@@ -11,6 +11,14 @@ describe("running Medusa HTTP contracts", () => {
     expect(response.status).toBe(200);
   });
 
+  it("reports a ready backend with its dependencies available", async () => {
+    const response = await fetch(`${configuration.backendUrl}/ready`);
+    const payload = (await response.json()) as unknown;
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ status: "ready" });
+  });
+
   it("lists seeded products with a stable minimum structure", async () => {
     const response = await fetch(`${configuration.backendUrl}/store/products`, {
       headers: {
