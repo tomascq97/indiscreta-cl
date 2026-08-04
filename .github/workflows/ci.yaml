@@ -79,7 +79,7 @@ jobs:
         run: |
           pnpm exec turbo build --filter=@dtc/backend --force
 
-          setsid pnpm --dir apps/backend start > "$RUNNER_TEMP/medusa.log" 2>&1 &
+          setsid pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
           medusa_pid=$!
 
           cleanup() {
