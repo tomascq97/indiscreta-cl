@@ -8,6 +8,8 @@ export const redisModuleResolvers = {
   workflowEngine: "@medusajs/medusa/workflow-engine-redis",
   locking: "@medusajs/medusa/locking",
   lockingProvider: "@medusajs/medusa/locking-redis",
+  caching: "@medusajs/medusa/caching",
+  cachingProvider: "@medusajs/caching-redis",
 } as const;
 
 export function buildRedisModules(redisUrl?: string): RedisModule[] {
@@ -35,6 +37,19 @@ export function buildRedisModules(redisUrl?: string): RedisModule[] {
           {
             resolve: redisModuleResolvers.lockingProvider,
             id: "locking-redis",
+            is_default: true,
+            options: { redisUrl },
+          },
+        ],
+      },
+    },
+    {
+      resolve: redisModuleResolvers.caching,
+      options: {
+        providers: [
+          {
+            resolve: redisModuleResolvers.cachingProvider,
+            id: "caching-redis",
             is_default: true,
             options: { redisUrl },
           },

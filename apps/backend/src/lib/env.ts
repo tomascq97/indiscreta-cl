@@ -62,6 +62,10 @@ export function validateBackendEnvironment(
     missingVariables.push("REDIS_URL");
   }
 
+  if (isProduction && environment.MEDUSA_FF_CACHING?.trim() !== "true") {
+    missingVariables.push("MEDUSA_FF_CACHING");
+  }
+
   if (missingVariables.length) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
