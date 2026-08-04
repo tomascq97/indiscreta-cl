@@ -7,6 +7,7 @@ import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
+import { isOrderReady } from "@lib/util/checkout-rules"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -17,12 +18,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
   "data-testid": dataTestId,
 }) => {
-  const notReady =
-    !cart ||
-    !cart.shipping_address ||
-    !cart.billing_address ||
-    !cart.email ||
-    (cart.shipping_methods?.length ?? 0) < 1
+  const notReady = !isOrderReady(cart)
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
 
@@ -71,7 +67,7 @@ const StripePaymentButton = ({
   const card = elements?.getElement("card")
 
   const session = cart.payment_collection?.payment_sessions?.find(
-    (s) => s.status === "pending"
+    (s) => s.status === "pending",
   )
 
   const disabled = !stripe || !elements ? true : false

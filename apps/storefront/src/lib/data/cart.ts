@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
+import { getCheckoutAddressPayload } from "@lib/util/checkout-rules"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -70,7 +71,7 @@ export async function getOrSetCart(countryCode: string) {
     const cartResp = await sdk.store.cart.create(
       { region_id: region.id, locale: locale || undefined },
       {},
-      headers
+      headers,
     )
     cart = cartResp.cart
 
@@ -145,7 +146,7 @@ export async function addToCart({
         quantity,
       },
       {},
-      headers
+      headers,
     )
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
@@ -239,7 +240,7 @@ export async function setShippingMethod({
 
 export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
-  data: HttpTypes.StoreInitializePaymentSession
+  data: HttpTypes.StoreInitializePaymentSession,
 ) {
   const headers = {
     ...(await getAuthHeaders()),
@@ -303,7 +304,7 @@ export async function removeDiscount(_code: string) {
 
 export async function removeGiftCard(
   _codeToRemove: string,
-  _giftCards: unknown[]
+  _giftCards: unknown[],
   // giftCards: GiftCard[]
 ) {
   //   const cartId = getCartId()
@@ -323,7 +324,7 @@ export async function removeGiftCard(
 
 export async function submitPromotionForm(
   currentState: unknown,
-  formData: FormData
+  formData: FormData,
 ) {
   const code = formData.get("code") as string
   try {
@@ -344,50 +345,13 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       throw new Error("No existing cart found when setting addresses")
     }
 
-    const getString = (key: string) => {
-      const value = formData.get(key)
-      return typeof value === "string" ? value : ""
-    }
-
-    const data: HttpTypes.StoreUpdateCart = {
-      shipping_address: {
-        first_name: getString("shipping_address.first_name"),
-        last_name: getString("shipping_address.last_name"),
-        address_1: getString("shipping_address.address_1"),
-        address_2: "",
-        company: getString("shipping_address.company"),
-        postal_code: getString("shipping_address.postal_code"),
-        city: getString("shipping_address.city"),
-        country_code: getString("shipping_address.country_code"),
-        province: getString("shipping_address.province"),
-        phone: getString("shipping_address.phone"),
-      },
-      email: getString("email"),
-    }
-
-    const sameAsBilling = formData.get("same_as_billing")
-    if (sameAsBilling === "on") data.billing_address = data.shipping_address
-
-    if (sameAsBilling !== "on")
-      data.billing_address = {
-        first_name: getString("billing_address.first_name"),
-        last_name: getString("billing_address.last_name"),
-        address_1: getString("billing_address.address_1"),
-        address_2: "",
-        company: getString("billing_address.company"),
-        postal_code: getString("billing_address.postal_code"),
-        city: getString("billing_address.city"),
-        country_code: getString("billing_address.country_code"),
-        province: getString("billing_address.province"),
-        phone: getString("billing_address.phone"),
-      }
-    await updateCart(data)
+    await updateCart(getCheckoutAddressPayload(formData))
   } catch (error: unknown) {
     return error instanceof Error ? error.message : String(error)
   }
 
   redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
+    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`,
   )
 }
 
