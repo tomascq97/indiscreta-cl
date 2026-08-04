@@ -17,17 +17,24 @@ P1.5B1 intentionally uses one Redis URL for all three modules. This keeps the
 initial deployment contract small while allowing the services to be separated
 later for capacity, availability, or isolation requirements.
 
-## Future API and worker topology
+## API and worker process contract
 
 The target topology uses the same compiled backend artifact in two services:
 
-1. A public Medusa API process with `MEDUSA_WORKER_MODE=server`.
-2. A private Medusa worker process with `MEDUSA_WORKER_MODE=worker`.
+1. A public Medusa API process started with `pnpm run start:server`.
+2. A private Medusa worker process started with `pnpm run start:worker`.
 
 Both processes must use the same application version, PostgreSQL database, and
-Redis infrastructure. The worker must not be exposed publicly. P1.5B1 does not
-deploy or run these services separately; the current CI continues to exercise
-the backend in `shared` mode.
+Redis infrastructure. The server mode loads HTTP entrypoints and does not load
+background jobs. The worker mode loads background processors and does not load
+HTTP entrypoints, so it must not be exposed publicly or use `/health` as its
+liveness check.
+
+`pnpm run start:shared` starts HTTP and background processing together. It is
+retained for development and the existing commercial CI flow. CI additionally
+starts the compiled artifact once as server and once as worker, verifies the
+server `/health` endpoint, confirms that both processes remain active, and
+always terminates both process groups.
 
 ## Environment matrix
 
@@ -55,7 +62,7 @@ the backend in `shared` mode.
 P1.5B1 does not make the application production-ready. The following work is
 still required:
 
-- deploy and validate separate API and worker services;
+- deploy separate API and worker services on the selected hosting platform;
 - add the Redis Caching Module;
 - replace local file storage with persistent S3-compatible storage;
 - add dependency-aware readiness checks;
