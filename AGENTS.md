@@ -71,13 +71,19 @@ cd apps/backend && <pm> run lint       # medusa lint
 cd apps/storefront && <pm> run lint    # eslint .
 ```
 
-### Test (backend only; the storefront has no test suite)
+### Test
+
+`pnpm test` runs real workspace tests through Turbo: backend tests use Jest and
+storefront tests use Vitest. Backend HTTP integration tests run separately in
+CI against ephemeral PostgreSQL and Redis infrastructure after Medusa is
+prepared and started.
 
 ```bash
-<pm> run test                                              # all test tasks via turbo
+<pm> run test                                              # backend Jest + storefront Vitest via Turbo
 cd apps/backend && <pm> run test:unit                      # **/src/**/__tests__/**/*.unit.spec.ts
 cd apps/backend && <pm> run test:integration:modules       # **/src/modules/*/__tests__/**
 cd apps/backend && <pm> run test:integration:http          # **/integration-tests/http/*.spec.ts
+cd apps/storefront && <pm> run test                        # Vitest suite
 ```
 
 Single test — pass a path/pattern through to Jest, keeping `TEST_TYPE`:
