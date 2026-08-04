@@ -43,6 +43,7 @@ jobs:
       JWT_SECRET: ci-only-placeholder
       COOKIE_SECRET: ci-only-placeholder
       MEDUSA_WORKER_MODE: shared
+      MEDUSA_FF_CACHING: "true"
       REDIS_URL: redis://localhost:6379
       NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://medusa-ci.internal:9000
       NEXT_PUBLIC_BASE_URL: https://storefront-ci.invalid

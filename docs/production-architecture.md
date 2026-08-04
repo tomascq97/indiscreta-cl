@@ -1,19 +1,22 @@
 # Production architecture
 
-## P1.5B1 implemented state
+## Current implemented state
 
-The Medusa 2.18 backend supports one Redis connection for three essential
+The Medusa 2.18 backend supports one Redis connection for four essential
 infrastructure responsibilities:
 
 - Redis Event Bus
 - Redis Workflow Engine
 - Redis distributed locking
+- Redis Caching Module Provider
 
 These modules are enabled only when `REDIS_URL` is present. Development and
 test can omit Redis and keep the local Medusa providers. Production requires a
 valid `redis:` or `rediss:` URL and an explicit `MEDUSA_WORKER_MODE`.
+Production also requires `MEDUSA_FF_CACHING=true` so Medusa core uses the
+modern Caching Module.
 
-P1.5B1 intentionally uses one Redis URL for all three modules. This keeps the
+The current architecture intentionally uses one Redis URL for all four modules. This keeps the
 initial deployment contract small while allowing the services to be separated
 later for capacity, availability, or isolation requirements.
 
@@ -38,13 +41,13 @@ always terminates both process groups.
 
 ## Environment matrix
 
-| Environment | Worker mode                   | Redis                   | Infrastructure providers                           |
-| ----------- | ----------------------------- | ----------------------- | -------------------------------------------------- |
-| Development | Defaults to `shared`          | Optional                | Local providers are allowed without Redis          |
-| Test        | Defaults to `shared`          | Optional                | Deterministic unit tests can use local providers   |
-| CI          | Explicit `shared`             | Ephemeral Redis service | Event Bus, Workflow Engine, and Locking use Redis  |
-| Staging     | Explicit `server` or `worker` | Required managed Redis  | Redis providers must be enabled                    |
-| Production  | Explicit `server` or `worker` | Required managed Redis  | Redis providers must be enabled; no local fallback |
+| Environment | Worker mode                   | Redis                   | Infrastructure providers                                   |
+| ----------- | ----------------------------- | ----------------------- | ---------------------------------------------------------- |
+| Development | Defaults to `shared`          | Optional                | Local providers are allowed without Redis                  |
+| Test        | Defaults to `shared`          | Optional                | Deterministic unit tests can use local providers           |
+| CI          | Explicit `shared`             | Ephemeral Redis service | Event Bus, Workflow Engine, Locking, and Caching use Redis |
+| Staging     | Explicit `server` or `worker` | Required managed Redis  | Redis providers must be enabled                            |
+| Production  | Explicit `server` or `worker` | Required managed Redis  | Redis providers must be enabled; no local fallback         |
 
 ## Deployment rules
 
@@ -54,8 +57,8 @@ always terminates both process groups.
 - API and worker separation must use one immutable build and matching versions.
 - Redis unavailability in production must not cause a silent fallback to local
   providers.
-- A future deployment may give Event Bus, Workflow Engine, and Locking distinct
-  Redis connections without changing their business responsibilities.
+- A future deployment may give Event Bus, Workflow Engine, Locking, and Caching
+  distinct Redis connections without changing their responsibilities.
 
 ## Remaining production blockers
 
@@ -63,7 +66,6 @@ P1.5B1 does not make the application production-ready. The following work is
 still required:
 
 - deploy separate API and worker services on the selected hosting platform;
-- add the Redis Caching Module;
 - replace local file storage with persistent S3-compatible storage;
 - add dependency-aware readiness checks;
 - define provider-specific deployment, scaling, shutdown, and rollback

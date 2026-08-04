@@ -34,6 +34,7 @@ describe("validateBackendEnvironment", () => {
       validateBackendEnvironment({
         ...validEnvironment,
         NODE_ENV: "production",
+        MEDUSA_FF_CACHING: "true",
         REDIS_URL: "redis://redis.invalid:6379",
       }),
     ).toThrow("MEDUSA_WORKER_MODE");
@@ -47,6 +48,7 @@ describe("validateBackendEnvironment", () => {
         ...validEnvironment,
         NODE_ENV: "production",
         MEDUSA_WORKER_MODE: invalidMode,
+        MEDUSA_FF_CACHING: "true",
         REDIS_URL: "redis://redis.invalid:6379",
       });
       throw new Error("Expected validation to fail");
@@ -65,8 +67,20 @@ describe("validateBackendEnvironment", () => {
         ...validEnvironment,
         NODE_ENV: "production",
         MEDUSA_WORKER_MODE: "server",
+        MEDUSA_FF_CACHING: "true",
       }),
     ).toThrow("REDIS_URL");
+  });
+
+  it("rejects production without the Caching feature flag", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        MEDUSA_WORKER_MODE: "server",
+        REDIS_URL: "redis://redis.invalid:6379",
+      }),
+    ).toThrow("MEDUSA_FF_CACHING");
   });
 
   it.each(["redis://redis.invalid:6379", "rediss://redis.invalid:6379"])(

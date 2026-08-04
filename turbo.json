@@ -11,6 +11,7 @@
         "AUTH_CORS",
         "JWT_SECRET",
         "COOKIE_SECRET",
+        "MEDUSA_FF_CACHING",
         "MEDUSA_WORKER_MODE",
         "REDIS_URL"
       ]
