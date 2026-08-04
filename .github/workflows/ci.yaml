@@ -59,11 +59,9 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Prepare isolated Medusa database
+      - name: Migrate and seed isolated Medusa database
         working-directory: apps/backend
-        run: |
-          pnpm exec medusa db:migrate
-          pnpm run seed
+        run: pnpm exec medusa db:migrate
 
       - name: Export CI publishable key
         shell: bash
