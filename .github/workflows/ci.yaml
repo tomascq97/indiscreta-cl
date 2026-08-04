@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           pnpm exec turbo build --filter=@dtc/backend --force
-          pnpm --dir apps/backend/.medusa/server --ignore-workspace install --prod --no-frozen-lockfile
+          ln -s "$GITHUB_WORKSPACE/apps/backend/node_modules" apps/backend/.medusa/server/node_modules
 
           setsid pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
           medusa_pid=$!
