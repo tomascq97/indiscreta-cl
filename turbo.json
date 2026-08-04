@@ -3,7 +3,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", ".medusa/**"]
+      "outputs": ["dist/**", ".next/**", ".medusa/**"],
+      "env": [
+        "DATABASE_URL",
+        "STORE_CORS",
+        "ADMIN_CORS",
+        "AUTH_CORS",
+        "JWT_SECRET",
+        "COOKIE_SECRET"
+      ]
     },
     "dev": {
       "cache": false,
