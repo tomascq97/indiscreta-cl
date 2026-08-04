@@ -1,9 +1,9 @@
 # P1 technical closure report
 
-Date: 2026-08-04  
-Project: Indiscreta  
-Audited branch: `chore/p1-cierre`  
-Audited commit: `2a86add`  
+Date: 2026-08-04
+Project: Indiscreta
+Audited branch: `chore/p1-cierre`
+Audited commit: `2a86add`
 Overall result: **APPROVED WITH OBSERVATIONS**
 
 ## Executive summary
@@ -227,7 +227,7 @@ Prioritized repository debt after P1:
 | S3, health, and production operations       | 8.4/10 | Strong configuration/readiness layer; provider smoke tests and hosting operations remain external.   |
 | Architecture documentation                  | 9.0/10 | Implementation, contributor instructions, and known deployment blockers align.                       |
 
-Weighted technical score: **9.1/10**.  
+Weighted technical score: **9.1/10**.
 Estimated P1 milestone completion: **94%**.
 
 The percentage represents completion of the approved P1 repository scope, not
