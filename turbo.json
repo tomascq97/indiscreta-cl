@@ -10,7 +10,9 @@
         "ADMIN_CORS",
         "AUTH_CORS",
         "JWT_SECRET",
-        "COOKIE_SECRET"
+        "COOKIE_SECRET",
+        "MEDUSA_WORKER_MODE",
+        "REDIS_URL"
       ]
     },
     "dev": {
