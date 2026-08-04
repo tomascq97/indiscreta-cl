@@ -5,20 +5,14 @@ import { Heading, Text, clx } from "@modules/common/components/ui"
 import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
+import { isReviewReady } from "@lib/util/checkout-rules"
 
 const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
   const searchParams = useSearchParams()
 
   const isOpen = searchParams.get("step") === "review"
 
-  const paidByGiftcard = !!(
-    (cart as unknown as Record<string, unknown>)?.gift_cards && ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])?.length > 0 && cart?.total === 0
-  )
-
-  const previousStepsCompleted =
-    cart.shipping_address &&
-    (cart.shipping_methods?.length ?? 0) > 0 &&
-    (cart.payment_collection || paidByGiftcard)
+  const previousStepsCompleted = isReviewReady(cart)
 
   return (
     <div className="bg-white">
@@ -29,7 +23,7 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
             "flex flex-row text-3xl-regular gap-x-2 items-baseline",
             {
               "opacity-50 pointer-events-none select-none": !isOpen,
-            }
+            },
           )}
         >
           Review
