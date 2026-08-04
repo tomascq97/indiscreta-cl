@@ -5,27 +5,29 @@ import React from "react"
 import StripeWrapper from "./stripe-wrapper"
 import { HttpTypes } from "@medusajs/types"
 import { isStripeLike } from "@lib/constants"
+import { getStorefrontEnvironment } from "@lib/env-config"
 
 type PaymentWrapperProps = {
   cart: HttpTypes.StoreCart
   children: React.ReactNode
 }
 
+const environment = getStorefrontEnvironment()
 const stripeKey =
-  process.env.NEXT_PUBLIC_STRIPE_KEY ||
-  process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
+  environment.NEXT_PUBLIC_STRIPE_KEY ||
+  environment.NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
 
-const medusaAccountId = process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_ACCOUNT_ID
+const medusaAccountId = environment.NEXT_PUBLIC_MEDUSA_PAYMENTS_ACCOUNT_ID
 const stripePromise = stripeKey
   ? loadStripe(
       stripeKey,
-      medusaAccountId ? { stripeAccount: medusaAccountId } : undefined
+      medusaAccountId ? { stripeAccount: medusaAccountId } : undefined,
     )
   : null
 
 const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
   const paymentSession = cart.payment_collection?.payment_sessions?.find(
-    (s) => s.status === "pending"
+    (s) => s.status === "pending",
   )
 
   if (
