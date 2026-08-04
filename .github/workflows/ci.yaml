@@ -112,28 +112,27 @@ jobs:
           }
           trap cleanup EXIT
 
-          healthy=false
+          ready=false
           for attempt in {1..60}; do
-            if curl --fail --silent --show-error http://localhost:9000/health > /dev/null; then
-              healthy=true
+            if curl --fail --silent --show-error http://localhost:9000/ready > /dev/null; then
+              ready=true
               break
             fi
 
             if ! kill -0 "$medusa_pid" 2>/dev/null; then
-              echo "Medusa stopped before becoming healthy." >&2
-              tail -n 100 "$RUNNER_TEMP/medusa.log" >&2
+              echo "Medusa stopped before becoming ready." >&2
               exit 1
             fi
 
             sleep 2
           done
 
-          if [[ "$healthy" != "true" ]]; then
-            echo "Medusa did not become healthy within 120 seconds." >&2
-            tail -n 100 "$RUNNER_TEMP/medusa.log" >&2
+          if [[ "$ready" != "true" ]]; then
+            echo "Medusa did not become ready within 120 seconds." >&2
             exit 1
           fi
 
+          curl --fail --silent --show-error http://localhost:9000/health > /dev/null
           pnpm --dir apps/backend run test:integration:http
           pnpm exec turbo build --filter=@dtc/storefront --force
 
@@ -142,7 +141,8 @@ jobs:
         run: |
           setsid pnpm --dir apps/backend/.medusa/server run start:server > "$RUNNER_TEMP/medusa-server.log" 2>&1 &
           server_pid=$!
-          setsid pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
+          # The alternate port prevents collisions in this single CI runner; it does not expose the worker publicly.
+          setsid env PORT=9001 pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
           worker_pid=$!
 
           cleanup() {
@@ -153,10 +153,10 @@ jobs:
           }
           trap cleanup EXIT
 
-          healthy=false
+          ready=false
           for attempt in {1..60}; do
             if ! kill -0 "$server_pid" 2>/dev/null; then
-              echo "Medusa server stopped before becoming healthy." >&2
+              echo "Medusa server stopped before becoming ready." >&2
               exit 1
             fi
 
@@ -165,19 +165,20 @@ jobs:
               exit 1
             fi
 
-            if curl --fail --silent --show-error http://localhost:9000/health > /dev/null; then
-              healthy=true
+            if curl --fail --silent --show-error http://localhost:9000/ready > /dev/null; then
+              ready=true
               break
             fi
 
             sleep 2
           done
 
-          if [[ "$healthy" != "true" ]]; then
-            echo "Medusa server did not become healthy within 120 seconds." >&2
+          if [[ "$ready" != "true" ]]; then
+            echo "Medusa server did not become ready within 120 seconds." >&2
             exit 1
           fi
 
+          curl --fail --silent --show-error http://localhost:9000/health > /dev/null
           sleep 5
           kill -0 "$server_pid"
           kill -0 "$worker_pid"

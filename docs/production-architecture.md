@@ -36,8 +36,32 @@ liveness check.
 `pnpm run start:shared` starts HTTP and background processing together. It is
 retained for development and the existing commercial CI flow. CI additionally
 starts the compiled artifact once as server and once as worker, verifies the
-server `/health` endpoint, confirms that both processes remain active, and
-always terminates both process groups.
+server liveness and readiness endpoints, confirms that both processes remain
+active, and always terminates both process groups.
+
+## Liveness and readiness
+
+Medusa's built-in `GET /health` remains the HTTP process liveness signal. It
+only establishes that a server or shared process can answer HTTP and must not
+be used as evidence that its infrastructure dependencies are operational.
+
+`GET /ready` is the separate readiness signal. It performs a limited,
+read-only query through the Store Module to verify PostgreSQL and, when the
+Caching Module is registered, a read through that module to verify Redis. It
+returns HTTP 200 with `{ "status": "ready" }` or HTTP 503 with
+`{ "status": "unavailable" }`. Driver errors, connection details, and
+credentials are never returned.
+
+The route is loaded by `server` and `shared` processes. A `worker` process does
+not load HTTP entrypoints and must not expose an extra web server. Its liveness
+is the process signal supplied by the hosting platform; readiness should use
+provider-specific process and queue-consumer telemetry. CI currently verifies
+that the worker remains active while the companion server is ready.
+
+S3 is intentionally excluded from general readiness. Catalog and checkout can
+remain operational during a transient file-provider outage, and an S3 probe
+would perform external I/O on every readiness request. Bucket upload,
+retrieval, and deletion belong in a provider-specific smoke test.
 
 ## Environment matrix
 
@@ -77,14 +101,20 @@ automatically. Before switching a deployed environment to S3, copy required
 assets to the bucket, preserve their public URLs or update stored references,
 verify retrieval, and only then activate the S3 configuration.
 
-## Remaining production blockers
+## P1.5 closure
 
-The current implementation does not make the application production-ready. The following work is
-still required:
+P1.5 now provides Redis-backed Event Bus, Workflow Engine, distributed locking,
+and caching; explicit shared, server, and worker process modes; production S3
+configuration without a local-disk fallback; sanitized environment validation;
+and dependency-aware API readiness validated by the isolated CI architecture.
+
+The application is not yet fully production-ready. Hosting-specific work still
+required includes:
 
 - deploy separate API and worker services on the selected hosting platform;
 - provision and validate the final S3-compatible bucket and migrate existing
   assets;
-- add dependency-aware readiness checks;
-- define provider-specific deployment, scaling, shutdown, and rollback
-  procedures.
+- configure server `/health` liveness and `/ready` readiness probes plus worker
+  process and queue-consumer monitoring;
+- define connection budgets, alerting, scaling thresholds, deployment order,
+  graceful shutdown, rollback, and managed-service failure procedures.
