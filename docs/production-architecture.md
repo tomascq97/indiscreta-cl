@@ -60,13 +60,31 @@ always terminates both process groups.
 - A future deployment may give Event Bus, Workflow Engine, Locking, and Caching
   distinct Redis connections without changing their responsibilities.
 
+## File storage
+
+Development and tests without S3 configuration keep Medusa's default local
+file provider. Production requires a complete S3-compatible configuration and
+never falls back to local disk. Alternative endpoints are supported; services
+that require path-style requests can enable `S3_FORCE_PATH_STYLE` together with
+`S3_ENDPOINT`.
+
+Medusa 2.18 runtime and documentation use a `providers` array for the File
+Module, while its published `FileModuleOptions` type incorrectly declares a
+singular `provider`. The project isolates this mismatch in a narrow local type.
+
+The four existing files under `apps/backend/static` are not uploaded or moved
+automatically. Before switching a deployed environment to S3, copy required
+assets to the bucket, preserve their public URLs or update stored references,
+verify retrieval, and only then activate the S3 configuration.
+
 ## Remaining production blockers
 
-P1.5B1 does not make the application production-ready. The following work is
+The current implementation does not make the application production-ready. The following work is
 still required:
 
 - deploy separate API and worker services on the selected hosting platform;
-- replace local file storage with persistent S3-compatible storage;
+- provision and validate the final S3-compatible bucket and migrate existing
+  assets;
 - add dependency-aware readiness checks;
 - define provider-specific deployment, scaling, shutdown, and rollback
   procedures.
