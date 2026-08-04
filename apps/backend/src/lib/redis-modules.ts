@@ -22,7 +22,11 @@ export function buildRedisModules(redisUrl?: string): RedisModule[] {
     },
     {
       resolve: redisModuleResolvers.workflowEngine,
-      options: { redisUrl },
+      options: {
+        redis: {
+          redisUrl,
+        },
+      },
     },
     {
       resolve: redisModuleResolvers.locking,

@@ -17,12 +17,16 @@ describe("buildRedisModules", () => {
     expect(new Set(modules.map(({ resolve }) => resolve)).size).toBe(3);
   });
 
-  it("passes redisUrl directly to Event Bus and Workflow Engine", () => {
+  it("uses the module-specific Redis option structures", () => {
     const redisUrl = "rediss://redis.invalid:6379";
     const [eventBus, workflowEngine] = buildRedisModules(redisUrl);
 
     expect(eventBus.options).toEqual({ redisUrl });
-    expect(workflowEngine.options).toEqual({ redisUrl });
+    expect(workflowEngine.options).toEqual({
+      redis: {
+        redisUrl,
+      },
+    });
   });
 
   it("registers Redis as the default locking provider", () => {
