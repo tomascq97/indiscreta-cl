@@ -1,11 +1,13 @@
 import { loadEnv, defineConfig } from "@medusajs/framework/utils";
 
 import { validateBackendEnvironment } from "./src/lib/env";
+import { buildFileModule } from "./src/lib/file-module";
 import { buildRedisModules } from "./src/lib/redis-modules";
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
 const environment = validateBackendEnvironment(process.env);
+const fileModule = buildFileModule(environment.S3);
 
 module.exports = defineConfig({
   projectConfig: {
@@ -19,5 +21,8 @@ module.exports = defineConfig({
       cookieSecret: environment.COOKIE_SECRET,
     },
   },
-  modules: buildRedisModules(environment.REDIS_URL),
+  modules: [
+    ...buildRedisModules(environment.REDIS_URL),
+    ...(fileModule ? [fileModule] : []),
+  ],
 });

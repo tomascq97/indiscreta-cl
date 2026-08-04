@@ -9,6 +9,14 @@ const validEnvironment = {
   COOKIE_SECRET: "cookie-test-secret",
 };
 
+const validS3Environment = {
+  S3_FILE_URL: "https://assets.invalid/bucket",
+  S3_ACCESS_KEY_ID: "test-access-key",
+  S3_SECRET_ACCESS_KEY: "test-secret-key",
+  S3_REGION: "test-region-1",
+  S3_BUCKET: "test-bucket",
+};
+
 describe("validateBackendEnvironment", () => {
   it("defaults to shared mode in development", () => {
     expect(validateBackendEnvironment(validEnvironment)).toEqual({
@@ -21,6 +29,80 @@ describe("validateBackendEnvironment", () => {
     expect(
       validateBackendEnvironment(validEnvironment).REDIS_URL,
     ).toBeUndefined();
+  });
+
+  it("allows development to use local file storage without S3", () => {
+    expect(validateBackendEnvironment(validEnvironment).S3).toBeUndefined();
+  });
+
+  it("accepts a complete S3-compatible configuration", () => {
+    expect(
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validS3Environment,
+        S3_ENDPOINT: "https://s3-api.invalid",
+        S3_FORCE_PATH_STYLE: "true",
+      }).S3,
+    ).toEqual({
+      fileUrl: validS3Environment.S3_FILE_URL,
+      accessKeyId: validS3Environment.S3_ACCESS_KEY_ID,
+      secretAccessKey: validS3Environment.S3_SECRET_ACCESS_KEY,
+      region: validS3Environment.S3_REGION,
+      bucket: validS3Environment.S3_BUCKET,
+      endpoint: "https://s3-api.invalid",
+      forcePathStyle: true,
+    });
+  });
+
+  it("rejects production without S3 configuration", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        NODE_ENV: "production",
+        MEDUSA_WORKER_MODE: "server",
+        MEDUSA_FF_CACHING: "true",
+        REDIS_URL: "redis://redis.invalid:6379",
+      }),
+    ).toThrow("S3_FILE_URL");
+  });
+
+  it("rejects a partial S3 configuration", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        S3_BUCKET: "partial-bucket",
+      }),
+    ).toThrow("S3_FILE_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION");
+  });
+
+  it("rejects invalid S3 URLs without echoing credentials", () => {
+    const sensitiveValue = "sensitive-s3-secret";
+
+    try {
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validS3Environment,
+        S3_FILE_URL: "file:///private/assets",
+        S3_SECRET_ACCESS_KEY: sensitiveValue,
+      });
+      throw new Error("Expected validation to fail");
+    } catch (error) {
+      const message = (error as Error).message;
+
+      expect(message).toContain("S3_FILE_URL");
+      expect(message).not.toContain(sensitiveValue);
+      expect(message).not.toContain("file:///private/assets");
+    }
+  });
+
+  it("requires an endpoint when path-style access is enabled", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validS3Environment,
+        S3_FORCE_PATH_STYLE: "true",
+      }),
+    ).toThrow("S3_ENDPOINT");
   });
 
   it("reports every base variable missing by name", () => {

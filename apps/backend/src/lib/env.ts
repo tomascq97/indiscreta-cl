@@ -16,12 +16,36 @@ export const medusaWorkerModes = ["shared", "server", "worker"] as const;
 
 export type MedusaWorkerMode = (typeof medusaWorkerModes)[number];
 
+const requiredS3EnvironmentVariables = [
+  "S3_FILE_URL",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "S3_REGION",
+  "S3_BUCKET",
+] as const;
+
+const optionalS3EnvironmentVariables = [
+  "S3_ENDPOINT",
+  "S3_FORCE_PATH_STYLE",
+] as const;
+
+export type S3FileConfiguration = {
+  fileUrl: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  region: string;
+  bucket: string;
+  endpoint?: string;
+  forcePathStyle?: boolean;
+};
+
 export type BackendEnvironment = Record<
   RequiredBackendEnvironmentVariable,
   string
 > & {
   MEDUSA_WORKER_MODE: MedusaWorkerMode;
   REDIS_URL?: string;
+  S3?: S3FileConfiguration;
 };
 
 function isMedusaWorkerMode(value: string): value is MedusaWorkerMode {
@@ -43,6 +67,91 @@ function validateRedisUrl(redisUrl: string): void {
     MedusaError.Types.INVALID_DATA,
     "REDIS_URL must be a valid URL using redis: or rediss:",
   );
+}
+
+function validateHttpUrl(name: string, value: string): void {
+  try {
+    const protocol = new URL(value).protocol;
+
+    if (protocol === "http:" || protocol === "https:") {
+      return;
+    }
+  } catch {
+    // The common error below intentionally excludes the supplied value.
+  }
+
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    `${name} must be a valid URL using http: or https:`,
+  );
+}
+
+function validateS3Environment(
+  environment: NodeJS.ProcessEnv,
+  isProduction: boolean,
+): S3FileConfiguration | undefined {
+  const allS3VariableNames = [
+    ...requiredS3EnvironmentVariables,
+    ...optionalS3EnvironmentVariables,
+  ];
+  const hasS3Configuration = allS3VariableNames.some((name) =>
+    environment[name]?.trim(),
+  );
+
+  if (!hasS3Configuration && !isProduction) {
+    return undefined;
+  }
+
+  const missingVariables = requiredS3EnvironmentVariables.filter(
+    (name) => !environment[name]?.trim(),
+  );
+
+  if (missingVariables.length) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `Missing required S3 environment variables: ${missingVariables.join(", ")}`,
+    );
+  }
+
+  const fileUrl = environment.S3_FILE_URL!.trim();
+  const endpoint = environment.S3_ENDPOINT?.trim();
+  const forcePathStyleValue = environment.S3_FORCE_PATH_STYLE?.trim();
+
+  validateHttpUrl("S3_FILE_URL", fileUrl);
+
+  if (endpoint) {
+    validateHttpUrl("S3_ENDPOINT", endpoint);
+  }
+
+  if (
+    forcePathStyleValue &&
+    forcePathStyleValue !== "true" &&
+    forcePathStyleValue !== "false"
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "S3_FORCE_PATH_STYLE must be true or false",
+    );
+  }
+
+  const forcePathStyle = forcePathStyleValue === "true";
+
+  if (forcePathStyle && !endpoint) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "S3_ENDPOINT is required when S3_FORCE_PATH_STYLE is true",
+    );
+  }
+
+  return {
+    fileUrl,
+    accessKeyId: environment.S3_ACCESS_KEY_ID!.trim(),
+    secretAccessKey: environment.S3_SECRET_ACCESS_KEY!.trim(),
+    region: environment.S3_REGION!.trim(),
+    bucket: environment.S3_BUCKET!.trim(),
+    ...(endpoint ? { endpoint } : {}),
+    ...(forcePathStyleValue ? { forcePathStyle } : {}),
+  };
 }
 
 export function validateBackendEnvironment(
@@ -88,6 +197,8 @@ export function validateBackendEnvironment(
     validateRedisUrl(redisUrl);
   }
 
+  const s3Configuration = validateS3Environment(environment, isProduction);
+
   const requiredEnvironment = Object.fromEntries(
     requiredBackendEnvironmentVariables.map((name) => [
       name,
@@ -99,6 +210,7 @@ export function validateBackendEnvironment(
     ...requiredEnvironment,
     MEDUSA_WORKER_MODE: workerMode,
     ...(redisUrl ? { REDIS_URL: redisUrl } : {}),
+    ...(s3Configuration ? { S3: s3Configuration } : {}),
   };
 }
 
