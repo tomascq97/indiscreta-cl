@@ -1,11 +1,14 @@
 import { HttpTypes } from "@medusajs/types"
 import { getStorefrontEnvironment } from "@lib/env-config"
 import { NextRequest, NextResponse } from "next/server"
+import {
+  buildCountryRedirectUrl,
+  resolveCountryCode,
+} from "@lib/util/region-routing"
 
 const environment = getStorefrontEnvironment()
 const BACKEND_URL = environment.NEXT_PUBLIC_MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = environment.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-const DEFAULT_REGION = environment.NEXT_PUBLIC_DEFAULT_REGION || "dk"
 
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
@@ -72,8 +75,6 @@ async function getCountryCode(
   request: NextRequest,
   regionMap: Map<string, HttpTypes.StoreRegion | number>,
 ) {
-  let countryCode
-
   const urlCountryCode = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
 
   // Cloudflare Workers provides country via request.cf.country
@@ -86,19 +87,12 @@ async function getCountryCode(
     .get("x-vercel-ip-country")
     ?.toLowerCase()
 
-  if (urlCountryCode && regionMap.has(urlCountryCode)) {
-    countryCode = urlCountryCode
-  } else if (cloudflareCountryCode && regionMap.has(cloudflareCountryCode)) {
-    countryCode = cloudflareCountryCode
-  } else if (vercelCountryCode && regionMap.has(vercelCountryCode)) {
-    countryCode = vercelCountryCode
-  } else if (regionMap.has(DEFAULT_REGION)) {
-    countryCode = DEFAULT_REGION
-  } else if (regionMap.keys().next().value) {
-    countryCode = regionMap.keys().next().value
-  }
-
-  return countryCode
+  return resolveCountryCode({
+    availableCountryCodes: regionMap.keys(),
+    urlCountryCode,
+    cloudflareCountryCode,
+    vercelCountryCode,
+  })
 }
 
 /**
@@ -115,8 +109,7 @@ export async function middleware(request: NextRequest) {
   const regionMap = await getRegionMap(cacheId)
   const countryCode = await getCountryCode(request, regionMap)
 
-  // if the country code is available, use it, otherwise use the default region
-  const country = countryCode || DEFAULT_REGION
+  const country = countryCode
   const firstPathSegment = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
   const urlHasCountry = firstPathSegment === country.toLowerCase()
 
@@ -132,10 +125,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // if the url doesn't have the country, redirect to it
-  const redirectPath =
-    request.nextUrl.pathname === "/" ? "" : request.nextUrl.pathname
-  const queryString = request.nextUrl.search || ""
-  const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
+  const redirectUrl = buildCountryRedirectUrl({
+    origin: request.nextUrl.origin,
+    pathname: request.nextUrl.pathname,
+    search: request.nextUrl.search,
+    countryCode: country,
+  })
 
   return NextResponse.redirect(redirectUrl, 307)
 }

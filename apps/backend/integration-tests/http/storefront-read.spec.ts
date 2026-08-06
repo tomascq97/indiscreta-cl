@@ -41,6 +41,35 @@ describe("running Medusa HTTP contracts", () => {
     );
   });
 
+  it("exposes the reproducible Chile region in CLP", async () => {
+    const response = await fetch(
+      `${configuration.backendUrl}/store/regions?fields=currency_code%2C*countries`,
+      {
+        headers: {
+          "x-publishable-api-key": configuration.publishableKey,
+        },
+      },
+    );
+    const payload = (await response.json()) as {
+      regions?: {
+        currency_code?: string;
+        countries?: { iso_2?: string }[];
+      }[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.regions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          currency_code: "clp",
+          countries: expect.arrayContaining([
+            expect.objectContaining({ iso_2: "cl" }),
+          ]),
+        }),
+      ]),
+    );
+  });
+
   it("returns 404 for an unknown store endpoint", async () => {
     const response = await fetch(
       `${configuration.backendUrl}/store/p1-http-contract-missing`,

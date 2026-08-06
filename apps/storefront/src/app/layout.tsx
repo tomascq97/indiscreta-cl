@@ -1,3 +1,4 @@
+import { storefrontRegionalConfig } from "@lib/regional-config"
 import { getBaseURL } from "@lib/util/env"
 import { Cormorant_Garamond, Manrope } from "next/font/google"
 import { Metadata } from "next"
@@ -22,16 +23,16 @@ export const metadata: Metadata = {
     default: "Tienda de moda femenina",
     template: "%s | Tienda",
   },
-  description:
-    "Moda femenina, calzado y accesorios con despacho a todo Chile.",
+  description: "Moda femenina, calzado y accesorios con despacho a todo Chile.",
+  openGraph: {
+    locale: storefrontRegionalConfig.openGraphLocale,
+  },
 }
 
-export default function RootLayout(props: {
-  children: React.ReactNode
-}) {
+export default function RootLayout(props: { children: React.ReactNode }) {
   return (
     <html
-      lang="es"
+      lang={storefrontRegionalConfig.htmlLanguage}
       data-mode="light"
       className={`${cormorant.variable} ${manrope.variable}`}
     >
