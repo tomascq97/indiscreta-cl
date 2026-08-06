@@ -6,7 +6,6 @@ const requiredEnvironmentVariables = Object.freeze([
 ])
 
 const optionalEnvironmentVariables = Object.freeze([
-  "NEXT_PUBLIC_DEFAULT_REGION",
   "NEXT_PUBLIC_BASE_URL",
   "NEXT_PUBLIC_STRIPE_KEY",
   "NEXT_PUBLIC_VERCEL_URL",
@@ -29,7 +28,6 @@ const conditionalEnvironmentVariables = Object.freeze({
  * @typedef {Object} StorefrontEnvironment
  * @property {string} NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
  * @property {string} NEXT_PUBLIC_MEDUSA_BACKEND_URL
- * @property {string | undefined} NEXT_PUBLIC_DEFAULT_REGION
  * @property {string | undefined} NEXT_PUBLIC_BASE_URL
  * @property {string | undefined} NEXT_PUBLIC_STRIPE_KEY
  * @property {string | undefined} NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
@@ -170,9 +168,6 @@ function validateStorefrontEnvironment(environment) {
     NEXT_PUBLIC_MEDUSA_BACKEND_URL: normalize(
       environment.NEXT_PUBLIC_MEDUSA_BACKEND_URL,
     ),
-    NEXT_PUBLIC_DEFAULT_REGION: normalize(
-      environment.NEXT_PUBLIC_DEFAULT_REGION,
-    ),
     NEXT_PUBLIC_BASE_URL: normalize(environment.NEXT_PUBLIC_BASE_URL),
     NEXT_PUBLIC_STRIPE_KEY: normalize(environment.NEXT_PUBLIC_STRIPE_KEY),
     NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY: normalize(
@@ -193,7 +188,6 @@ function readStorefrontEnvironment() {
     NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY,
     NEXT_PUBLIC_MEDUSA_BACKEND_URL: process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL,
-    NEXT_PUBLIC_DEFAULT_REGION: process.env.NEXT_PUBLIC_DEFAULT_REGION,
     NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
     NEXT_PUBLIC_STRIPE_KEY: process.env.NEXT_PUBLIC_STRIPE_KEY,
     NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY:

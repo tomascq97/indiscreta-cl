@@ -1,4 +1,5 @@
 import { isEmpty } from "./isEmpty"
+import { storefrontRegionalConfig } from "../regional-config"
 
 type ConvertToLocaleParams = {
   amount: number
@@ -13,7 +14,7 @@ export const convertToLocale = ({
   currency_code,
   minimumFractionDigits,
   maximumFractionDigits,
-  locale = "en-US",
+  locale = storefrontRegionalConfig.presentationLocale,
 }: ConvertToLocaleParams) => {
   return currency_code && !isEmpty(currency_code)
     ? new Intl.NumberFormat(locale, {
