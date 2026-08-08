@@ -4,6 +4,8 @@ FROM node:22-bookworm-slim AS builder
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+
+# Valores ficticios, no sensibles, usados únicamente al compilar.
 ENV NODE_ENV="development"
 ENV DATABASE_URL="postgres://build:build@127.0.0.1:5432/build"
 ENV STORE_CORS="http://localhost:8000"
@@ -27,7 +29,8 @@ COPY . .
 
 RUN pnpm --filter @dtc/backend build
 
-RUN test -x /app/node_modules/.bin/medusa
+# Verifica el binario en el workspace al que realmente pertenece.
+RUN test -x /app/apps/backend/node_modules/.bin/medusa
 
 FROM node:22-bookworm-slim AS runner
 
@@ -36,11 +39,17 @@ ENV PORT="9000"
 
 WORKDIR /app/apps/backend/.medusa/server
 
+# Store central de pnpm.
 COPY --from=builder --chown=node:node /app/node_modules /app/node_modules
+
+# Enlaces y binarios específicos del workspace backend.
+COPY --from=builder --chown=node:node /app/apps/backend/node_modules /app/apps/backend/node_modules
+
+# Servidor y panel Admin compilados.
 COPY --from=builder --chown=node:node /app/apps/backend/.medusa/server /app/apps/backend/.medusa/server
 
 USER node
 
 EXPOSE 9000
 
-CMD ["/app/node_modules/.bin/medusa", "start"]
+CMD ["/app/apps/backend/node_modules/.bin/medusa", "start"]
