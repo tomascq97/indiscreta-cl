@@ -1,5 +1,5 @@
 "use client"
-
+import { esCl } from "@lib/translations/es-cl"
 import { addToCart } from "@lib/data/cart"
 import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
@@ -12,22 +12,19 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
-
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
 }
-
 const optionsAsKeymap = (
-  variantOptions: HttpTypes.StoreProductVariant["options"]
+  variantOptions: HttpTypes.StoreProductVariant["options"],
 ) => {
   return variantOptions?.reduce((acc: Record<string, string>, varopt) => {
     if (varopt.option_id) acc[varopt.option_id] = varopt.value
     return acc
   }, {})
 }
-
 export default function ProductActions({
   product,
   disabled,
@@ -35,11 +32,9 @@ export default function ProductActions({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
   const countryCode = useParams().countryCode as string
-
   // If there is only 1 variant, preselect the options
   useEffect(() => {
     if (product.variants?.length === 1) {
@@ -47,18 +42,15 @@ export default function ProductActions({
       setOptions(variantOptions ?? {})
     }
   }, [product.variants])
-
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {
       return
     }
-
     return product.variants.find((v) => {
       const variantOptions = optionsAsKeymap(v.options)
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
-
   // update the options when a variant is selected
   const setOptionValue = (optionId: string, value: string) => {
     setOptions((prev) => ({
@@ -66,7 +58,6 @@ export default function ProductActions({
       [optionId]: value,
     }))
   }
-
   //check if the selected options produce a valid variant
   const isValidVariant = useMemo(() => {
     return product.variants?.some((v) => {
@@ -74,37 +65,30 @@ export default function ProductActions({
       return isEqual(variantOptions, options)
     })
   }, [product.variants, options])
-
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
     const value = isValidVariant ? selectedVariant?.id : null
-
     if (params.get("v_id") === value) {
       return
     }
-
     if (value) {
       params.set("v_id", value)
     } else {
       params.delete("v_id")
     }
-
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname)
   }, [isValidVariant, pathname, router, searchParams, selectedVariant])
-
   // check if the selected variant is in stock
   const inStock = useMemo(() => {
     // If we don't manage inventory, we can always add to cart
     if (selectedVariant && !selectedVariant.manage_inventory) {
       return true
     }
-
     // If we allow back orders on the variant, we can add to cart
     if (selectedVariant?.allow_backorder) {
       return true
     }
-
     // If there is inventory available, we can add to cart
     if (
       selectedVariant?.manage_inventory &&
@@ -112,30 +96,22 @@ export default function ProductActions({
     ) {
       return true
     }
-
     // Otherwise, we can't add to cart
     return false
   }, [selectedVariant])
-
   const actionsRef = useRef<HTMLDivElement>(null)
-
   const inView = useIntersection(actionsRef, "0px")
-
   // add the selected variant to the cart
   const handleAddToCart = async () => {
     if (!selectedVariant?.id) return null
-
     setIsAdding(true)
-
     await addToCart({
       variantId: selectedVariant.id,
       quantity: 1,
       countryCode,
     })
-
     setIsAdding(false)
   }
-
   return (
     <>
       <div className="flex flex-col gap-y-2" ref={actionsRef}>
@@ -178,10 +154,10 @@ export default function ProductActions({
           data-testid="add-product-button"
         >
           {!selectedVariant && !options
-            ? "Select variant"
+            ? "Selecciona una variante"
             : !inStock || !isValidVariant
-            ? "Out of stock"
-            : "Add to cart"}
+              ? esCl.product.soldOut
+              : esCl.product.addToCart}
         </Button>
         <MobileActions
           product={product}

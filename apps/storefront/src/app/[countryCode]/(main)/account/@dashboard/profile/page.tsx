@@ -1,6 +1,6 @@
+import { esCl } from "@lib/translations/es-cl"
 import { Metadata } from "next"
-
-import ProfilePhone from "@modules/account//components/profile-phone"
+import ProfilePhone from "@modules/account/components/profile-phone"
 import ProfileBillingAddress from "@modules/account/components/profile-billing-address"
 import ProfileEmail from "@modules/account/components/profile-email"
 import ProfileName from "@modules/account/components/profile-name"
@@ -9,7 +9,7 @@ import { listRegions } from "@lib/data/regions"
 import { retrieveCustomer } from "@lib/data/customer"
 
 export const metadata: Metadata = {
-  title: "Profile",
+  title: esCl.account.profile,
   description: "Consulta y edita tu perfil de Indiscreta.",
 }
 
@@ -23,29 +23,25 @@ export default async function Profile() {
 
   return (
     <div className="w-full" data-testid="profile-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl-semi">Profile</h1>
-        <p className="text-base-regular">
-          Consulta y actualiza la información de tu perfil, incluidos tu nombre, correo electrónico
-          y número de teléfono. También puedes actualizar tu dirección de facturación o cambiar
-          tu contraseña.
+      <header className="border-b border-neutral-200 pb-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-rose)]">
+          Datos personales
         </p>
-      </div>
-      <div className="flex flex-col gap-y-8 w-full">
+        <h1 className="mt-2 text-3xl font-bold tracking-[-0.035em] sm:text-4xl">
+          {esCl.account.profile}
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-neutral-600 sm:text-base">
+          Consulta y actualiza tu nombre, teléfono y dirección de facturación.
+          El correo asociado a tu cuenta se muestra como dato de referencia.
+        </p>
+      </header>
+
+      <div className="mt-7 flex w-full flex-col gap-5">
         <ProfileName customer={customer} />
-        <Divider />
         <ProfileEmail customer={customer} />
-        <Divider />
         <ProfilePhone customer={customer} />
-        <Divider />
-        {/* <ProfilePassword customer={customer} />
-        <Divider /> */}
         <ProfileBillingAddress customer={customer} regions={regions} />
       </div>
     </div>
   )
-}
-
-const Divider = () => {
-  return <div className="w-full h-px bg-gray-200" />
 }

@@ -1,30 +1,26 @@
 "use client"
-
+import { esCl } from "@lib/translations/es-cl"
 import FilterRadioGroup from "@modules/common/components/filter-radio-group"
-
 export type SortOptions = "price_asc" | "price_desc" | "created_at"
-
 type SortProductsProps = {
   sortBy: SortOptions
   setQueryParams: (name: string, value: string) => void
   "data-testid"?: string
 }
-
 const sortOptions = [
   {
     value: "created_at",
-    label: "Latest Arrivals",
+    label: esCl.product.latest,
   },
   {
     value: "price_asc",
-    label: "Price: Low -> High",
+    label: esCl.product.priceAscending,
   },
   {
     value: "price_desc",
-    label: "Price: High -> Low",
+    label: esCl.product.priceDescending,
   },
 ]
-
 const SortProducts = ({
   "data-testid": dataTestId,
   sortBy,
@@ -33,10 +29,9 @@ const SortProducts = ({
   const handleChange = (value: string) => {
     setQueryParams("sortBy", value as SortOptions)
   }
-
   return (
     <FilterRadioGroup
-      title="Sort by"
+      title={esCl.product.sortBy}
       items={sortOptions}
       value={sortBy}
       handleChange={handleChange}
@@ -44,5 +39,4 @@ const SortProducts = ({
     />
   )
 }
-
 export default SortProducts

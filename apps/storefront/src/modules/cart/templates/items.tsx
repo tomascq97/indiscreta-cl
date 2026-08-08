@@ -1,56 +1,46 @@
-import repeat from "@lib/util/repeat"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Table } from "@modules/common/components/ui"
-
 import Item from "@modules/cart/components/item"
-import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
 
 type ItemsTemplateProps = {
   cart?: HttpTypes.StoreCart
 }
 
 const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
-  const items = cart?.items
+  const items = [...(cart?.items ?? [])].sort((a, b) => {
+    return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
+  })
+
+  const totalItems = items.reduce((total, item) => {
+    return total + item.quantity
+  }, 0)
+
   return (
-    <div>
-      <div className="pb-3 flex items-center">
-        <Heading className="text-[2rem] leading-[2.75rem]">Cart</Heading>
+    <section>
+      <div className="flex flex-col gap-3 border-b border-neutral-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-rose)]">
+            Tu selección
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-black">
+            Productos
+          </h2>
+        </div>
+
+        <p className="text-sm text-neutral-500">
+          {totalItems} {totalItems === 1 ? "producto" : "productos"}
+        </p>
       </div>
-      <Table>
-        <Table.Header className="border-t-0">
-          <Table.Row className="text-ui-fg-subtle txt-medium-plus">
-            <Table.HeaderCell className="!pl-0">Item</Table.HeaderCell>
-            <Table.HeaderCell></Table.HeaderCell>
-            <Table.HeaderCell>Quantity</Table.HeaderCell>
-            <Table.HeaderCell className="hidden small:table-cell">
-              Price
-            </Table.HeaderCell>
-            <Table.HeaderCell className="!pr-0 text-right">
-              Total
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {items
-            ? items
-                .sort((a, b) => {
-                  return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-                })
-                .map((item) => {
-                  return (
-                    <Item
-                      key={item.id}
-                      item={item}
-                      currencyCode={cart?.currency_code}
-                    />
-                  )
-                })
-            : repeat(5).map((i) => {
-                return <SkeletonLineItem key={i} />
-              })}
-        </Table.Body>
-      </Table>
-    </div>
+
+      <div className="divide-y divide-neutral-200 border-b border-neutral-200">
+        {items.map((item) => (
+          <Item
+            key={item.id}
+            item={item}
+            currencyCode={cart?.currency_code ?? "clp"}
+          />
+        ))}
+      </div>
+    </section>
   )
 }
 

@@ -1,72 +1,93 @@
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text } from "@modules/common/components/ui"
-
-import Divider from "@modules/common/components/divider"
 
 type ShippingDetailsProps = {
   order: HttpTypes.StoreOrder
 }
 
+const formatShippingName = (name?: string) => {
+  if (!name) return "Despacho seleccionado"
+
+  const normalized = name.toLowerCase()
+
+  if (normalized.includes("standard")) return "Despacho estándar"
+  if (normalized.includes("express")) return "Despacho express"
+
+  return name
+}
+
 const ShippingDetails = ({ order }: ShippingDetailsProps) => {
+  const shippingMethod = order.shipping_methods?.[0]
+  const address = order.shipping_address
+
   return (
-    <div>
-      <Heading level="h2" className="flex flex-row text-3xl-regular my-6">
-        Delivery
-      </Heading>
-      <div className="flex items-start gap-x-8">
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-address-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">
-            Shipping Address
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.first_name}{" "}
-            {order.shipping_address?.last_name}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.address_1}{" "}
-            {order.shipping_address?.address_2}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.postal_code},{" "}
-            {order.shipping_address?.city}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.country_code?.toUpperCase()}
-          </Text>
+    <section className="border border-neutral-200 bg-white p-5 sm:p-7">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-rose)]">
+        Entrega
+      </p>
+
+      <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em]">
+        Información de despacho
+      </h2>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 border-t border-neutral-200 pt-5 sm:grid-cols-2">
+        <div data-testid="shipping-address-summary">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+            Dirección
+          </p>
+
+          <p className="mt-3 font-semibold">
+            {address?.first_name} {address?.last_name}
+          </p>
+
+          <p className="mt-2 text-sm leading-6 text-neutral-600">
+            {address?.address_1}
+            {address?.address_2 ? `, ${address.address_2}` : ""}
+            <br />
+            {address?.postal_code}, {address?.city}
+            <br />
+            {address?.province ? `${address.province}, ` : ""}
+            Chile
+          </p>
         </div>
 
-        <div
-          className="flex flex-col w-1/3 "
-          data-testid="shipping-contact-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">Contact</Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.phone}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">{order.email}</Text>
-        </div>
+        <div data-testid="shipping-contact-summary">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+            Contacto
+          </p>
 
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-method-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">Method</Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {(order.shipping_methods?.[0] as { name?: string })?.name} (
-            {convertToLocale({
-              amount: order.shipping_methods?.[0].total ?? 0,
-              currency_code: order.currency_code,
-            })}
-            )
-          </Text>
+          <p className="mt-3 text-sm leading-6 text-neutral-600">
+            {address?.phone || "Teléfono no registrado"}
+            <br />
+            {order.email}
+          </p>
         </div>
       </div>
-      <Divider className="mt-8" />
-    </div>
+
+      <div
+        className="mt-6 border-t border-neutral-200 pt-5"
+        data-testid="shipping-method-summary"
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+          Método de despacho
+        </p>
+
+        <div className="mt-3 flex items-center justify-between gap-4">
+          <p className="font-semibold">
+            {formatShippingName(
+              (shippingMethod as { name?: string } | undefined)?.name,
+            )}
+          </p>
+
+          <p className="font-semibold">
+            {convertToLocale({
+              amount: shippingMethod?.total ?? 0,
+              currency_code: order.currency_code,
+            })}
+          </p>
+        </div>
+      </div>
+    </section>
   )
 }
 

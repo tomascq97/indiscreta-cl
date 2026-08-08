@@ -1,10 +1,9 @@
 "use client"
 
+import { esCl } from "@lib/translations/es-cl"
 import React, { useActionState, useEffect, useMemo } from "react"
-
 import Input from "@modules/common/components/input"
 import NativeSelect from "@modules/common/components/native-select"
-
 import { addCustomerAddress, updateCustomerAddress } from "@lib/data/customer"
 import { HttpTypes } from "@medusajs/types"
 import AccountInfo from "../account-info"
@@ -21,20 +20,21 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
   const regionOptions = useMemo(() => {
     return (
       regions
-        ?.map((region) => {
-          return region.countries?.map((country) => ({
-            value: country.iso_2,
-            label: country.display_name,
-          }))
-        })
-        .flat() || []
+        ?.flatMap(
+          (region) =>
+            region.countries?.map((country) => ({
+              value: country.iso_2,
+              label: country.display_name,
+            })) ?? [],
+        )
+        .filter(Boolean) || []
     )
   }, [regions])
 
   const [successState, setSuccessState] = React.useState(false)
 
   const billingAddress = customer.addresses?.find(
-    (addr) => addr.is_default_billing
+    (address) => address.is_default_billing,
   )
 
   const initialState: Record<string, unknown> = {
@@ -42,15 +42,12 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
     isDefaultShipping: false,
     error: false,
     success: false,
-  }
-
-  if (billingAddress) {
-    initialState.addressId = billingAddress.id
+    ...(billingAddress ? { addressId: billingAddress.id } : {}),
   }
 
   const [state, formAction] = useActionState(
     billingAddress ? updateCustomerAddress : addCustomerAddress,
-    initialState
+    initialState,
   )
 
   const clearState = () => {
@@ -58,130 +55,150 @@ const ProfileBillingAddress: React.FC<MyInformationProps> = ({
   }
 
   useEffect(() => {
-    setSuccessState(!!state.success)
+    setSuccessState(Boolean(state.success))
   }, [state])
 
   const currentInfo = useMemo(() => {
     if (!billingAddress) {
-      return "No billing address"
+      return "No registrada"
     }
 
     const country =
-      regionOptions?.find(
-        (country) => country?.value === billingAddress.country_code
+      regionOptions.find(
+        (option) => option?.value === billingAddress.country_code,
       )?.label || billingAddress.country_code?.toUpperCase()
 
     return (
-      <div className="flex flex-col font-semibold" data-testid="current-info">
+      <div
+        className="flex flex-col gap-0.5 font-medium"
+        data-testid="current-info"
+      >
         <span>
           {billingAddress.first_name} {billingAddress.last_name}
         </span>
-        <span>{billingAddress.company}</span>
+        {billingAddress.company ? <span>{billingAddress.company}</span> : null}
         <span>
           {billingAddress.address_1}
           {billingAddress.address_2 ? `, ${billingAddress.address_2}` : ""}
         </span>
         <span>
-          {billingAddress.postal_code}, {billingAddress.city}
+          {[billingAddress.postal_code, billingAddress.city]
+            .filter(Boolean)
+            .join(", ")}
         </span>
+        {billingAddress.province ? (
+          <span>{billingAddress.province}</span>
+        ) : null}
         <span>{country}</span>
       </div>
     )
   }, [billingAddress, regionOptions])
 
   return (
-    <form action={formAction} onReset={() => clearState()} className="w-full">
+    <form action={formAction} onReset={clearState} className="w-full">
       <input type="hidden" name="addressId" value={billingAddress?.id} />
+
       <AccountInfo
-        label="Billing address"
+        label={esCl.checkout.billingAddress}
         currentInfo={currentInfo}
         isSuccess={successState}
-        isError={!!state.error}
+        isError={Boolean(state.error)}
+        errorMessage={typeof state.error === "string" ? state.error : undefined}
         clearState={clearState}
+        helperText="Esta dirección puede utilizarse para documentos de compra y facturación."
         data-testid="account-billing-address-editor"
       >
-        <div className="grid grid-cols-1 gap-y-2">
-          <div className="grid grid-cols-2 gap-x-2">
+        <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
-              label="First name"
+              label="Nombre"
               name="first_name"
               defaultValue={billingAddress?.first_name || undefined}
               required
               data-testid="billing-first-name-input"
             />
             <Input
-              label="Last name"
+              label="Apellido"
               name="last_name"
               defaultValue={billingAddress?.last_name || undefined}
               required
               data-testid="billing-last-name-input"
             />
           </div>
+
           <Input
-            label="Company"
+            label="Empresa (opcional)"
             name="company"
             defaultValue={billingAddress?.company || undefined}
             data-testid="billing-company-input"
           />
+
           <Input
-            label="Phone"
+            label="Teléfono"
             name="phone"
-            type="phone"
-            autoComplete="phone"
+            type="tel"
+            autoComplete="tel"
             required
-            defaultValue={billingAddress?.phone ?? customer?.phone ?? ""}
+            defaultValue={billingAddress?.phone ?? customer.phone ?? ""}
             data-testid="billing-phone-input"
           />
+
           <Input
-            label="Address"
+            label="Dirección"
             name="address_1"
             defaultValue={billingAddress?.address_1 || undefined}
             required
             data-testid="billing-address-1-input"
           />
+
           <Input
-            label="Apartment, suite, etc."
+            label="Departamento, oficina, etc. (opcional)"
             name="address_2"
             defaultValue={billingAddress?.address_2 || undefined}
             data-testid="billing-address-2-input"
           />
-          <div className="grid grid-cols-[144px_1fr] gap-x-2">
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[160px_minmax(0,1fr)]">
             <Input
-              label="Postal code"
+              label="Código postal"
               name="postal_code"
               defaultValue={billingAddress?.postal_code || undefined}
               required
               data-testid="billing-postcal-code-input"
             />
             <Input
-              label="City"
+              label="Comuna"
               name="city"
               defaultValue={billingAddress?.city || undefined}
               required
               data-testid="billing-city-input"
             />
           </div>
+
           <Input
-            label="Province"
+            label="Región"
             name="province"
             defaultValue={billingAddress?.province || undefined}
+            required
             data-testid="billing-province-input"
           />
-          <NativeSelect
-            name="country_code"
-            defaultValue={billingAddress?.country_code || undefined}
-            required
-            data-testid="billing-country-code-select"
-          >
-            <option value="">-</option>
-            {regionOptions.map((option, i) => {
-              return (
-                <option key={i} value={option?.value}>
-                  {option?.label}
+
+          <label className="text-sm font-medium text-black">
+            País
+            <NativeSelect
+              name="country_code"
+              defaultValue={billingAddress?.country_code || "cl"}
+              required
+              data-testid="billing-country-code-select"
+            >
+              <option value="">Selecciona un país</option>
+              {regionOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
-              )
-            })}
-          </NativeSelect>
+              ))}
+            </NativeSelect>
+          </label>
         </div>
       </AccountInfo>
     </form>

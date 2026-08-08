@@ -1,49 +1,36 @@
-"use client"
+﻿"use client"
 
-import repeat from "@lib/util/repeat"
 import { HttpTypes } from "@medusajs/types"
-import { Table, clx } from "@modules/common/components/ui"
-
 import Item from "@modules/cart/components/item"
-import SkeletonLineItem from "@modules/skeletons/components/skeleton-line-item"
 
-type ItemsTemplateProps = {
+type ItemsPreviewTemplateProps = {
   cart: HttpTypes.StoreCart
 }
 
-const ItemsPreviewTemplate = ({ cart }: ItemsTemplateProps) => {
-  const items = cart.items
-  const hasOverflow = items && items.length > 4
+const ItemsPreviewTemplate = ({ cart }: ItemsPreviewTemplateProps) => {
+  const items = [...(cart.items ?? [])].sort((a, b) => {
+    return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
+  })
+
+  const hasOverflow = items.length > 4
 
   return (
     <div
-      className={clx({
-        "pl-[1px] overflow-y-scroll overflow-x-hidden no-scrollbar max-h-[420px]":
-          hasOverflow,
-      })}
+      className={
+        hasOverflow
+          ? "max-h-[420px] divide-y divide-neutral-200 overflow-y-auto overflow-x-hidden pr-2"
+          : "divide-y divide-neutral-200"
+      }
+      data-testid="items-table"
     >
-      <Table>
-        <Table.Body data-testid="items-table">
-          {items
-            ? items
-                .sort((a, b) => {
-                  return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-                })
-                .map((item) => {
-                  return (
-                    <Item
-                      key={item.id}
-                      item={item}
-                      type="preview"
-                      currencyCode={cart.currency_code}
-                    />
-                  )
-                })
-            : repeat(5).map((i) => {
-                return <SkeletonLineItem key={i} />
-              })}
-        </Table.Body>
-      </Table>
+      {items.map((item) => (
+        <Item
+          key={item.id}
+          item={item}
+          type="preview"
+          currencyCode={cart.currency_code ?? "clp"}
+        />
+      ))}
     </div>
   )
 }

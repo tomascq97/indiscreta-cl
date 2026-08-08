@@ -4,8 +4,8 @@ import { Suspense } from "react"
 import VerifyAccount from "@modules/account/components/verify-account"
 
 export const metadata: Metadata = {
-  title: "Verify your email",
-  description: "Verify your email address to complete your registration.",
+  title: "Verifica tu correo electrónico",
+  description: "Verifica tu correo electrónico para completar el registro.",
 }
 
 export default function VerifyAccountPage() {
@@ -14,7 +14,7 @@ export default function VerifyAccountPage() {
       <Suspense
         fallback={
           <p className="text-base-regular text-ui-fg-base">
-            Verifying your email...
+            Verificando tu correo electrónico...
           </p>
         }
       >

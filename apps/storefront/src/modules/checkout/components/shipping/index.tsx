@@ -1,4 +1,5 @@
 "use client"
+import { esCl } from "@lib/translations/es-cl"
 import { Radio, RadioGroup } from "@headlessui/react"
 import { setShippingMethod } from "@lib/data/cart"
 import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
@@ -11,48 +12,37 @@ import MedusaRadio from "@modules/common/components/radio"
 import { Button, clx, Heading, Text } from "@modules/common/components/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
-
 const PICKUP_OPTION_ON = "__PICKUP_ON"
 const PICKUP_OPTION_OFF = "__PICKUP_OFF"
-
 type ShippingProps = {
   cart: HttpTypes.StoreCart
   availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
 }
-
 function formatAddress(address: HttpTypes.StoreCartAddress) {
   if (!address) {
     return ""
   }
-
   let ret = ""
-
   if (address.address_1) {
     ret += ` ${address.address_1}`
   }
-
   if (address.address_2) {
     ret += `, ${address.address_2}`
   }
-
   if (address.postal_code) {
     ret += `, ${address.postal_code} ${address.city}`
   }
-
   if (address.country_code) {
     ret += `, ${address.country_code.toUpperCase()}`
   }
-
   return ret
 }
-
 const Shipping: React.FC<ShippingProps> = ({
   cart,
   availableShippingMethods,
 }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
-
   const [showPickupOptions, setShowPickupOptions] =
     useState<string>(PICKUP_OPTION_OFF)
   const [calculatedPricesMap, setCalculatedPricesMap] = useState<
@@ -60,41 +50,51 @@ const Shipping: React.FC<ShippingProps> = ({
   >({})
   const [error, setError] = useState<string | null>(null)
   const [shippingMethodId, setShippingMethodId] = useState<string | null>(
-    cart.shipping_methods?.at(-1)?.shipping_option_id || null
+    cart.shipping_methods?.at(-1)?.shipping_option_id || null,
   )
-
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-
   const isOpen = searchParams.get("step") === "delivery"
-
   const _shippingMethods = useMemo(
     () =>
       availableShippingMethods?.filter(
-        (sm) => (sm as unknown as { service_zone?: { fulfillment_set?: { type?: string } } }).service_zone?.fulfillment_set?.type !== "pickup"
+        (sm) =>
+          (
+            sm as unknown as {
+              service_zone?: {
+                fulfillment_set?: {
+                  type?: string
+                }
+              }
+            }
+          ).service_zone?.fulfillment_set?.type !== "pickup",
       ),
-    [availableShippingMethods]
+    [availableShippingMethods],
   )
-
   const _pickupMethods = useMemo(
     () =>
       availableShippingMethods?.filter(
-        (sm) => (sm as unknown as { service_zone?: { fulfillment_set?: { type?: string } } }).service_zone?.fulfillment_set?.type === "pickup"
+        (sm) =>
+          (
+            sm as unknown as {
+              service_zone?: {
+                fulfillment_set?: {
+                  type?: string
+                }
+              }
+            }
+          ).service_zone?.fulfillment_set?.type === "pickup",
       ),
-    [availableShippingMethods]
+    [availableShippingMethods],
   )
-
   const hasPickupOptions = !!_pickupMethods?.length
-
   useEffect(() => {
     let cancelled = false
     setIsLoadingPrices(true)
-
     const promises = (_shippingMethods ?? [])
       .filter((sm) => sm.price_type === "calculated")
       .map((sm) => calculatePriceForShippingOption(sm.id, cart.id))
-
     if (promises.length) {
       Promise.allSettled(promises).then((res) => {
         if (!cancelled) {
@@ -106,7 +106,6 @@ const Shipping: React.FC<ShippingProps> = ({
                 pricesMap[p.value.id] = p.value.amount ?? 0
               }
             })
-
           setCalculatedPricesMap(pricesMap)
           setIsLoadingPrices(false)
         }
@@ -115,62 +114,54 @@ const Shipping: React.FC<ShippingProps> = ({
       setCalculatedPricesMap({})
       setIsLoadingPrices(false)
     }
-
     return () => {
       cancelled = true
     }
   }, [_shippingMethods, cart.id])
-
   useEffect(() => {
     const isPickup = _pickupMethods?.some(
-      (method) => method.id === shippingMethodId
+      (method) => method.id === shippingMethodId,
     )
-
     setShowPickupOptions(isPickup ? PICKUP_OPTION_ON : PICKUP_OPTION_OFF)
   }, [_pickupMethods, shippingMethodId])
-
   const handleEdit = () => {
     router.push(pathname + "?step=delivery", { scroll: false })
   }
-
   const handleSubmit = () => {
-    router.push(pathname + "?step=payment", { scroll: false })
-  }
+    sessionStorage.removeItem("indiscreta-checkout-terms")
 
+    router.push(pathname + "?step=review", {
+      scroll: false,
+    })
+  }
   const handleSetShippingMethod = async (
     id: string,
-    variant: "shipping" | "pickup"
+    variant: "shipping" | "pickup",
   ) => {
     setError(null)
-
     if (variant === "pickup") {
       setShowPickupOptions(PICKUP_OPTION_ON)
     } else {
       setShowPickupOptions(PICKUP_OPTION_OFF)
     }
-
     let currentId: string | null = null
     setIsLoading(true)
     setShippingMethodId((prev) => {
       currentId = prev
       return id
     })
-
     await setShippingMethod({ cartId: cart.id, shippingMethodId: id })
-      .catch((err) => {
+      .catch((_err) => {
         setShippingMethodId(currentId)
-
-        setError(err.message)
+        setError(esCl.errors.generic)
       })
       .finally(() => {
         setIsLoading(false)
       })
   }
-
   useEffect(() => {
     setError(null)
   }, [isOpen])
-
   return (
     <div className="bg-white">
       <div className="flex flex-row items-center justify-between mb-6">
@@ -181,10 +172,10 @@ const Shipping: React.FC<ShippingProps> = ({
             {
               "opacity-50 pointer-events-none select-none":
                 !isOpen && cart.shipping_methods?.length === 0,
-            }
+            },
           )}
         >
-          Delivery
+          {esCl.orders.shipping}
           {!isOpen && (cart.shipping_methods?.length ?? 0) > 0 && (
             <CheckCircleSolid />
           )}
@@ -199,7 +190,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
                 data-testid="edit-delivery-button"
               >
-                Edit
+                {esCl.common.edit}
               </button>
             </Text>
           )}
@@ -209,10 +200,10 @@ const Shipping: React.FC<ShippingProps> = ({
           <div className="grid">
             <div className="flex flex-col">
               <span className="font-medium txt-medium text-ui-fg-base">
-                Shipping method
+                {esCl.checkout.shippingMethod}
               </span>
               <span className="mb-4 text-ui-fg-muted txt-medium">
-                How would you like you order delivered
+                ¿Cómo quieres recibir tu pedido?
               </span>
             </div>
             <div data-testid="delivery-options-container">
@@ -222,9 +213,8 @@ const Shipping: React.FC<ShippingProps> = ({
                     value={showPickupOptions}
                     onChange={(_value) => {
                       const id = _pickupMethods.find(
-                        (option) => !option.insufficient_inventory
+                        (option) => !option.insufficient_inventory,
                       )?.id
-
                       if (id) {
                         handleSetShippingMethod(id, "pickup")
                       }
@@ -238,7 +228,7 @@ const Shipping: React.FC<ShippingProps> = ({
                         {
                           "border-ui-border-interactive":
                             showPickupOptions === PICKUP_OPTION_ON,
-                        }
+                        },
                       )}
                     >
                       <div className="flex items-center gap-x-4">
@@ -246,7 +236,7 @@ const Shipping: React.FC<ShippingProps> = ({
                           checked={showPickupOptions === PICKUP_OPTION_ON}
                         />
                         <span className="text-base-regular">
-                          Pick up your order
+                          Retirar tu pedido
                         </span>
                       </div>
                       <span className="justify-self-end text-ui-fg-base">
@@ -268,7 +258,6 @@ const Shipping: React.FC<ShippingProps> = ({
                       option.price_type === "calculated" &&
                       !isLoadingPrices &&
                       typeof calculatedPricesMap[option.id] !== "number"
-
                     return (
                       <Radio
                         key={option.id}
@@ -282,7 +271,7 @@ const Shipping: React.FC<ShippingProps> = ({
                               option.id === shippingMethodId,
                             "hover:shadow-brders-none cursor-not-allowed":
                               isDisabled,
-                          }
+                          },
                         )}
                       >
                         <div className="flex items-center gap-x-4">
@@ -322,10 +311,10 @@ const Shipping: React.FC<ShippingProps> = ({
             <div className="grid">
               <div className="flex flex-col">
                 <span className="font-medium txt-medium text-ui-fg-base">
-                  Store
+                  {esCl.navigation.store}
                 </span>
                 <span className="mb-4 text-ui-fg-muted txt-medium">
-                  Choose a store near you
+                  Elige una tienda cercana
                 </span>
               </div>
               <div data-testid="delivery-options-container">
@@ -352,7 +341,7 @@ const Shipping: React.FC<ShippingProps> = ({
                                 option.id === shippingMethodId,
                               "hover:shadow-brders-none cursor-not-allowed":
                                 option.insufficient_inventory,
-                            }
+                            },
                           )}
                         >
                           <div className="flex items-start gap-x-4">
@@ -365,8 +354,18 @@ const Shipping: React.FC<ShippingProps> = ({
                               </span>
                               <span className="text-base-regular text-ui-fg-muted">
                                 {formatAddress(
-                                  (option as unknown as { service_zone?: { fulfillment_set?: { location?: { address: HttpTypes.StoreCartAddress } } } }).service_zone?.fulfillment_set?.location
-                                    ?.address as HttpTypes.StoreCartAddress
+                                  (
+                                    option as unknown as {
+                                      service_zone?: {
+                                        fulfillment_set?: {
+                                          location?: {
+                                            address: HttpTypes.StoreCartAddress
+                                          }
+                                        }
+                                      }
+                                    }
+                                  ).service_zone?.fulfillment_set?.location
+                                    ?.address as HttpTypes.StoreCartAddress,
                                 )}
                               </span>
                             </div>
@@ -399,7 +398,7 @@ const Shipping: React.FC<ShippingProps> = ({
               disabled={!cart.shipping_methods?.[0]}
               data-testid="submit-delivery-option-button"
             >
-              Continue to payment
+              Continuar a revisión →
             </Button>
           </div>
         </>
@@ -409,7 +408,7 @@ const Shipping: React.FC<ShippingProps> = ({
             {cart && (cart.shipping_methods?.length ?? 0) > 0 && (
               <div className="flex flex-col w-1/3">
                 <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                  Method
+                  Método
                 </Text>
                 <Text className="txt-medium text-ui-fg-subtle">
                   {cart.shipping_methods!.at(-1)!.name}{" "}
@@ -427,5 +426,4 @@ const Shipping: React.FC<ShippingProps> = ({
     </div>
   )
 }
-
 export default Shipping

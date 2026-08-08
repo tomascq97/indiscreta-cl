@@ -1,11 +1,9 @@
 "use client"
-
+import { esCl } from "@lib/translations/es-cl"
 import { ReactNode, useRef } from "react"
-
 type NewArrivalsCarouselProps = {
   children: ReactNode
 }
-
 function ArrowLeft() {
   return (
     <svg
@@ -20,7 +18,6 @@ function ArrowLeft() {
     </svg>
   )
 }
-
 function ArrowRight() {
   return (
     <svg
@@ -35,35 +32,29 @@ function ArrowRight() {
     </svg>
   )
 }
-
 export default function NewArrivalsCarousel({
   children,
 }: NewArrivalsCarouselProps) {
   const carouselRef = useRef<HTMLDivElement>(null)
-
   const scroll = (direction: "left" | "right") => {
     const carousel = carouselRef.current
-
     if (!carousel) {
       return
     }
-
     const firstCard = carousel.firstElementChild as HTMLElement | null
     const cardWidth = firstCard?.offsetWidth ?? carousel.clientWidth * 0.8
     const gap = 16
     const distance = (cardWidth + gap) * 2
-
     carousel.scrollBy({
       left: direction === "left" ? -distance : distance,
       behavior: "smooth",
     })
   }
-
   return (
     <div className="relative">
       <button
         type="button"
-        aria-label="Ver productos anteriores"
+        aria-label={esCl.accessibility.previousProducts}
         onClick={() => scroll("left")}
         className="absolute left-0 top-[42%] z-20 hidden h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-black bg-white text-black transition-colors hover:bg-black hover:text-white lg:flex"
       >
@@ -79,7 +70,7 @@ export default function NewArrivalsCarousel({
 
       <button
         type="button"
-        aria-label="Ver más productos"
+        aria-label={esCl.accessibility.nextProducts}
         onClick={() => scroll("right")}
         className="absolute right-0 top-[42%] z-20 hidden h-10 w-10 translate-x-1/2 items-center justify-center rounded-full border border-black bg-white text-black transition-colors hover:bg-black hover:text-white lg:flex"
       >

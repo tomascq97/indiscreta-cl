@@ -1,168 +1,185 @@
-import { Container } from "@modules/common/components/ui"
-
-import ChevronDown from "@modules/common/icons/chevron-down"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { esCl } from "@lib/translations/es-cl"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type OverviewProps = {
   customer: HttpTypes.StoreCustomer | null
   orders: HttpTypes.StoreOrder[] | null
 }
 
-const Overview = ({ customer, orders }: OverviewProps) => {
-  return (
-    <div data-testid="overview-page-wrapper">
-      <div className="hidden small:block">
-        <div className="text-xl-semi flex justify-between items-center mb-4">
-          <span data-testid="welcome-message" data-value={customer?.first_name}>
-            Hello {customer?.first_name}
-          </span>
-          <span className="text-small-regular text-ui-fg-base">
-            Signed in as:{" "}
-            <span
-              className="font-semibold"
-              data-testid="customer-email"
-              data-value={customer?.email}
-            >
-              {customer?.email}
-            </span>
-          </span>
-        </div>
-        <div className="flex flex-col py-8 border-t border-gray-200">
-          <div className="flex flex-col gap-y-4 h-full col-span-1 row-span-2 flex-1">
-            <div className="flex items-start gap-x-16 mb-6">
-              <div className="flex flex-col gap-y-4">
-                <h3 className="text-large-semi">Profile</h3>
-                <div className="flex items-end gap-x-2">
-                  <span
-                    className="text-3xl-semi leading-none"
-                    data-testid="customer-profile-completion"
-                    data-value={getProfileCompletion(customer)}
-                  >
-                    {getProfileCompletion(customer)}%
-                  </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
-                    Completed
-                  </span>
-                </div>
-              </div>
+function calculateProfileCompletion(
+  customer: HttpTypes.StoreCustomer | null,
+): number {
+  if (!customer) return 0
 
-              <div className="flex flex-col gap-y-4">
-                <h3 className="text-large-semi">Addresses</h3>
-                <div className="flex items-end gap-x-2">
-                  <span
-                    className="text-3xl-semi leading-none"
-                    data-testid="addresses-count"
-                    data-value={customer?.addresses?.length || 0}
-                  >
-                    {customer?.addresses?.length || 0}
-                  </span>
-                  <span className="uppercase text-base-regular text-ui-fg-subtle">
-                    Saved
-                  </span>
-                </div>
-              </div>
-            </div>
+  const fields = [
+    customer.first_name,
+    customer.last_name,
+    customer.email,
+    customer.phone,
+  ]
+  const completed = fields.filter((value) => Boolean(value?.trim())).length
 
-            <div className="flex flex-col gap-y-4">
-              <div className="flex items-center gap-x-2">
-                <h3 className="text-large-semi">Recent orders</h3>
-              </div>
-              <ul
-                className="flex flex-col gap-y-4"
-                data-testid="orders-wrapper"
-              >
-                {orders && orders.length > 0 ? (
-                  orders.slice(0, 5).map((order) => {
-                    return (
-                      <li
-                        key={order.id}
-                        data-testid="order-wrapper"
-                        data-value={order.id}
-                      >
-                        <LocalizedClientLink
-                          href={`/account/orders/details/${order.id}`}
-                        >
-                          <Container className="bg-gray-50 flex justify-between items-center p-4">
-                            <div className="grid grid-cols-3 grid-rows-2 text-small-regular gap-x-4 flex-1">
-                              <span className="font-semibold">Date placed</span>
-                              <span className="font-semibold">
-                                Order number
-                              </span>
-                              <span className="font-semibold">
-                                Total amount
-                              </span>
-                              <span data-testid="order-created-date">
-                                {new Date(order.created_at).toDateString()}
-                              </span>
-                              <span
-                                data-testid="order-id"
-                                data-value={order.display_id}
-                              >
-                                #{order.display_id}
-                              </span>
-                              <span data-testid="order-amount">
-                                {convertToLocale({
-                                  amount: order.total,
-                                  currency_code: order.currency_code,
-                                })}
-                              </span>
-                            </div>
-                            <button
-                              className="flex items-center justify-between"
-                              data-testid="open-order-button"
-                            >
-                              <span className="sr-only">
-                                Go to order #{order.display_id}
-                              </span>
-                              <ChevronDown className="-rotate-90" />
-                            </button>
-                          </Container>
-                        </LocalizedClientLink>
-                      </li>
-                    )
-                  })
-                ) : (
-                  <span data-testid="no-orders-message">No recent orders</span>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return Math.round((completed / fields.length) * 100)
 }
 
-const getProfileCompletion = (customer: HttpTypes.StoreCustomer | null) => {
-  let count = 0
+function formatDate(value?: string | Date | null): string {
+  if (!value) return "Fecha no disponible"
 
-  if (!customer) {
-    return 0
-  }
+  return new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value))
+}
 
-  if (customer.email) {
-    count++
-  }
+const Overview = ({ customer, orders }: OverviewProps) => {
+  const profileCompletion = calculateProfileCompletion(customer)
+  const addressCount = customer?.addresses?.length ?? 0
+  const recentOrders = orders?.slice(0, 3) ?? []
 
-  if (customer.first_name && customer.last_name) {
-    count++
-  }
+  return (
+    <div data-testid="overview-page-wrapper">
+      <header className="border-b border-neutral-200 pb-7">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-rose)]">
+          Resumen
+        </p>
+        <h2
+          className="mt-2 text-3xl font-bold tracking-[-0.035em] sm:text-4xl"
+          data-testid="welcome-message"
+          data-value={customer?.first_name}
+        >
+          Hola{customer?.first_name ? `, ${customer.first_name}` : ""}
+        </h2>
+        <p className="mt-3 text-sm text-neutral-600">
+          Revisa el estado de tu cuenta y tus pedidos más recientes.
+        </p>
+      </header>
 
-  if (customer.phone) {
-    count++
-  }
+      <div className="mt-7 grid gap-5 sm:grid-cols-2">
+        <LocalizedClientLink
+          href="/account/profile"
+          className="group border border-neutral-200 p-6 transition-colors hover:border-[var(--color-rose)]"
+        >
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                {esCl.account.profile}
+              </p>
+              <p className="mt-3 text-4xl font-bold tracking-[-0.04em]">
+                {profileCompletion}%
+              </p>
+              <p className="mt-1 text-sm text-neutral-500">completado</p>
+            </div>
+            <span className="text-xl text-[var(--color-rose)] transition-transform group-hover:translate-x-1">
+              →
+            </span>
+          </div>
 
-  const billingAddress = customer.addresses?.find(
-    (addr) => addr.is_default_billing
+          <div className="mt-6 h-1.5 overflow-hidden bg-neutral-100">
+            <div
+              className="h-full bg-[var(--color-rose)]"
+              style={{ width: `${profileCompletion}%` }}
+            />
+          </div>
+        </LocalizedClientLink>
+
+        <LocalizedClientLink
+          href="/account/addresses"
+          className="group border border-neutral-200 p-6 transition-colors hover:border-[var(--color-rose)]"
+        >
+          <div className="flex items-start justify-between gap-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                {esCl.account.addresses}
+              </p>
+              <p className="mt-3 text-4xl font-bold tracking-[-0.04em]">
+                {addressCount}
+              </p>
+              <p className="mt-1 text-sm text-neutral-500">
+                {addressCount === 1
+                  ? "dirección guardada"
+                  : "direcciones guardadas"}
+              </p>
+            </div>
+            <span className="text-xl text-[var(--color-rose)] transition-transform group-hover:translate-x-1">
+              →
+            </span>
+          </div>
+        </LocalizedClientLink>
+      </div>
+
+      <section className="mt-10">
+        <div className="flex items-end justify-between gap-6 border-b border-neutral-200 pb-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-rose)]">
+              Actividad
+            </p>
+            <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">
+              Pedidos recientes
+            </h3>
+          </div>
+
+          <LocalizedClientLink
+            href="/account/orders"
+            className="text-[11px] font-semibold uppercase tracking-[0.12em] text-black underline decoration-neutral-300 underline-offset-4 transition-colors hover:text-[var(--color-rose-dark)]"
+          >
+            Ver todos
+          </LocalizedClientLink>
+        </div>
+
+        {recentOrders.length ? (
+          <div className="divide-y divide-neutral-200 border-b border-neutral-200">
+            {recentOrders.map((order) => (
+              <LocalizedClientLink
+                key={order.id}
+                href={`/account/orders/details/${order.id}`}
+                className="grid gap-4 py-6 transition-colors hover:bg-neutral-50 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:px-4"
+                data-testid="order-wrapper"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-black">
+                    Pedido #{order.display_id ?? order.id}
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    {formatDate(order.created_at)}
+                  </p>
+                </div>
+
+                <p className="text-sm font-medium capitalize text-neutral-600">
+                  {order.status ?? "Procesando"}
+                </p>
+
+                <p className="text-sm font-semibold text-black">
+                  {convertToLocale({
+                    amount: order.total ?? 0,
+                    currency_code: order.currency_code ?? "clp",
+                  })}
+                </p>
+              </LocalizedClientLink>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
+            <p className="text-lg font-semibold text-black">
+              Aún no tienes pedidos
+            </p>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-600">
+              Cuando realices una compra, podrás revisar aquí su estado y los
+              detalles de entrega.
+            </p>
+            <LocalizedClientLink
+              href="/store"
+              className="mt-6 inline-flex min-h-11 items-center justify-center bg-black px-6 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[var(--color-rose-dark)]"
+            >
+              Explorar productos
+            </LocalizedClientLink>
+          </div>
+        )}
+      </section>
+    </div>
   )
-
-  if (billingAddress) {
-    count++
-  }
-
-  return (count / 4) * 100
 }
 
 export default Overview

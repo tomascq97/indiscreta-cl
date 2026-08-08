@@ -56,3 +56,13 @@ yarn-error.log*
 ehthumbs.db
 Thumbs.db
 **/.DS_Store
+
+# Environment variables and local secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Local development backups
+*.backup
+*.backup-*

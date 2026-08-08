@@ -58,7 +58,7 @@ const OptionsPicker = ({
     <div className="flex flex-col gap-y-4">
       <div className="flex items-center justify-between px-1">
         <span className="txt-compact-small-plus text-ui-fg-subtle">
-          Options
+          Opciones
         </span>
       </div>
       <Accordion.Root
@@ -76,7 +76,7 @@ const OptionsPicker = ({
               }))
               .filter(
                 (value): value is { id: string; label: string } =>
-                  !!value.id && !!value.label
+                  !!value.id && !!value.label,
               ) || []
 
           if (!values.length) {
@@ -94,7 +94,7 @@ const OptionsPicker = ({
 
           const isOpen = openItems.includes(option.id)
           const selectedCount = values.filter((value) =>
-            selectedValueIds.includes(value.id)
+            selectedValueIds.includes(value.id),
           ).length
 
           return (
@@ -118,7 +118,7 @@ const OptionsPicker = ({
                       "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
                       {
                         "rotate-180": isOpen,
-                      }
+                      },
                     )}
                   >
                     <ChevronDownMini />
@@ -141,7 +141,7 @@ const OptionsPicker = ({
                               isSelected,
                             "text-ui-fg-muted hover:text-ui-fg-base":
                               !isSelected,
-                          }
+                          },
                         )}
                         aria-pressed={isSelected}
                       >

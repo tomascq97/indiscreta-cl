@@ -1,11 +1,9 @@
 "use client"
-
+import { esCl } from "@lib/translations/es-cl"
 import { acceptTransferRequest, declineTransferRequest } from "@lib/data/orders"
 import { Button, Text } from "@modules/common/components/ui"
 import { useState } from "react"
-
 type TransferStatus = "pending" | "success" | "error"
-
 const TransferActions = ({ id, token }: { id: string; token: string }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [status, setStatus] = useState<{
@@ -15,37 +13,30 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
     accept: null,
     decline: null,
   })
-
   const acceptTransfer = async () => {
     setStatus({ accept: "pending", decline: null })
     setErrorMessage(null)
-
     const { success, error } = await acceptTransferRequest(id, token)
-
-    if (error) setErrorMessage(error)
+    if (error) setErrorMessage(esCl.errors.generic)
     setStatus({ accept: success ? "success" : "error", decline: null })
   }
-
   const declineTransfer = async () => {
     setStatus({ accept: null, decline: "pending" })
     setErrorMessage(null)
-
     const { success, error } = await declineTransferRequest(id, token)
-
-    if (error) setErrorMessage(error)
+    if (error) setErrorMessage(esCl.errors.generic)
     setStatus({ accept: null, decline: success ? "success" : "error" })
   }
-
   return (
     <div className="flex flex-col gap-y-4">
       {status?.accept === "success" && (
         <Text className="text-emerald-500">
-          Order transferred successfully!
+          ¡Pedido transferido correctamente!
         </Text>
       )}
       {status?.decline === "success" && (
         <Text className="text-emerald-500">
-          Order transfer declined successfully!
+          ¡Transferencia de pedido rechazada correctamente!
         </Text>
       )}
       {status?.accept !== "success" && status?.decline !== "success" && (
@@ -58,7 +49,7 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
               status?.accept === "pending" || status?.decline === "pending"
             }
           >
-            Accept transfer
+            Aceptar transferencia
           </Button>
           <Button
             size="large"
@@ -69,7 +60,7 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
               status?.accept === "pending" || status?.decline === "pending"
             }
           >
-            Decline transfer
+            Rechazar transferencia
           </Button>
         </div>
       )}
@@ -77,5 +68,4 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
     </div>
   )
 }
-
 export default TransferActions

@@ -15,10 +15,10 @@ import { StoreFreeShippingPrice } from "types/global"
 
 const computeTarget = (
   cart: HttpTypes.StoreCart,
-  price: HttpTypes.StorePrice
+  price: HttpTypes.StorePrice,
 ) => {
   const priceRule = (price.price_rules || []).find(
-    (pr) => pr.attribute === "item_total"
+    (pr) => pr.attribute === "item_total",
   )!
 
   const currentAmount = cart.item_total
@@ -101,8 +101,8 @@ export default function ShippingPriceNudge({
         (price) =>
           price.currency_code === cart.currency_code &&
           (price.price_rules || []).some(
-            (priceRule) => priceRule.attribute === "item_total"
-          )
+            (priceRule) => priceRule.attribute === "item_total",
+          ),
       )
 
       return validCurrencyPrices.map((price) => {
@@ -150,10 +150,10 @@ function FreeShippingInline({
               <div className="flex items-center gap-1.5">
                 {" "}
                 <CheckCircleSolid className="text-green-500 inline-block" />{" "}
-                Free Shipping unlocked!
+                ¡Activaste el envío gratis!
               </div>
             ) : (
-              `Unlock Free Shipping`
+              `Activar envío gratis`
             )}
           </div>
 
@@ -162,14 +162,14 @@ function FreeShippingInline({
               "opacity-0 invisible": price.target_reached,
             })}
           >
-            Only{" "}
+            Solo faltan{" "}
             <span className="text-neutral-950">
               {convertToLocale({
                 amount: price.target_remaining,
                 currency_code: cart.currency_code,
               })}
             </span>{" "}
-            away
+            para obtener envío gratis
           </div>
         </div>
         <div className="flex justify-between gap-1">
@@ -178,7 +178,7 @@ function FreeShippingInline({
               "bg-gradient-to-r from-zinc-400 to-zinc-500 h-1 rounded-full max-w-full duration-500 ease-in-out",
               {
                 "from-green-400 to-green-500": price.target_reached,
-              }
+              },
             )}
             style={{ width: `${price.remaining_percentage}%` }}
           ></div>
@@ -206,7 +206,7 @@ function FreeShippingPopup({
           "opacity-0 invisible delay-1000": price.target_reached,
           "opacity-0 invisible": isClosed,
           "opacity-100 visible": !price.target_reached && !isClosed,
-        }
+        },
       )}
     >
       <div>
@@ -226,10 +226,10 @@ function FreeShippingPopup({
                 {price.target_reached ? (
                   <div className="flex items-center gap-1.5">
                     <CheckCircleSolid className="text-green-500 inline-block" />{" "}
-                    Free Shipping unlocked!
+                    ¡Activaste el envío gratis!
                   </div>
                 ) : (
-                  `Unlock Free Shipping`
+                  `Activar envío gratis`
                 )}
               </div>
 
@@ -238,14 +238,14 @@ function FreeShippingPopup({
                   "opacity-0 invisible": price.target_reached,
                 })}
               >
-                Only{" "}
+                Solo faltan{" "}
                 <span className="text-white">
                   {convertToLocale({
                     amount: price.target_remaining,
                     currency_code: cart.currency_code,
                   })}
                 </span>{" "}
-                away
+                para obtener envío gratis
               </div>
             </div>
             <div className="flex justify-between gap-1">
@@ -254,7 +254,7 @@ function FreeShippingPopup({
                   "bg-gradient-to-r from-zinc-400 to-zinc-500 h-1.5 rounded-full max-w-full duration-500 ease-in-out",
                   {
                     "from-green-400 to-green-500": price.target_reached,
-                  }
+                  },
                 )}
                 style={{ width: `${price.remaining_percentage}%` }}
               ></div>
@@ -268,14 +268,14 @@ function FreeShippingPopup({
             className="rounded-2xl bg-transparent shadow-none outline-none border-[1px] border-white text-[15px] py-2.5 px-4"
             href="/cart"
           >
-            View cart
+            Ver carrito
           </LocalizedClientLink>
 
           <LocalizedClientLink
             className="flex-grow rounded-2xl bg-white text-neutral-950 shadow-none outline-none border-[1px] border-white text-[15px] py-2.5 px-4 text-center"
             href="/store"
           >
-            View products
+            Ver productos
           </LocalizedClientLink>
         </div>
       </div>

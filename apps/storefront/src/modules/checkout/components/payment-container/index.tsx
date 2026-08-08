@@ -38,7 +38,7 @@ const PaymentContainer: React.FC<PaymentContainerProps> = ({
         {
           "border-ui-border-interactive":
             selectedPaymentOptionId === paymentProviderId,
-        }
+        },
       )}
     >
       <div className="flex items-center justify-between ">
@@ -108,13 +108,13 @@ export const StripeCardContainer = ({
         (stripeReady ? (
           <div className="my-4 transition-all duration-150 ease-in-out">
             <Text className="txt-medium-plus text-ui-fg-base mb-1">
-              Enter your card details:
+              Ingresa los datos de tu tarjeta:
             </Text>
             <CardElement
               options={useOptions as StripeCardElementOptions}
               onChange={(e) => {
                 setCardBrand(
-                  e.brand && e.brand.charAt(0).toUpperCase() + e.brand.slice(1)
+                  e.brand && e.brand.charAt(0).toUpperCase() + e.brand.slice(1),
                 )
                 setError(e.error?.message || null)
                 setCardComplete(e.complete)
