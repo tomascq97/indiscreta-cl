@@ -27,29 +27,20 @@ COPY . .
 
 RUN pnpm --filter @dtc/backend build
 
-RUN pnpm --filter @dtc/backend --prod deploy --legacy /production/backend
-
-RUN mkdir -p /production/server \
-    && cp -a /app/apps/backend/.medusa/server/. /production/server/ \
-    && cp -a /production/backend/node_modules /production/server/node_modules
-
-RUN test -x /production/server/node_modules/.bin/medusa
+RUN test -x /app/node_modules/.bin/medusa
 
 FROM node:22-bookworm-slim AS runner
 
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
 ENV NODE_ENV="production"
 ENV PORT="9000"
 
-WORKDIR /app
+WORKDIR /app/apps/backend/.medusa/server
 
-RUN npm install --global pnpm@10.11.1
-
-COPY --from=builder --chown=node:node /production/server /app
+COPY --from=builder --chown=node:node /app/node_modules /app/node_modules
+COPY --from=builder --chown=node:node /app/apps/backend/.medusa/server /app/apps/backend/.medusa/server
 
 USER node
 
 EXPOSE 9000
 
-CMD ["pnpm", "start"]
+CMD ["/app/node_modules/.bin/medusa", "start"]
