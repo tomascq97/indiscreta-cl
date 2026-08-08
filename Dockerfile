@@ -34,7 +34,7 @@ WORKDIR /production/server
 
 RUN pnpm install \
     --prod \
-    --offline \
+    --prefer-offline \
     --no-frozen-lockfile \
     --config.recursive-install=false
 
