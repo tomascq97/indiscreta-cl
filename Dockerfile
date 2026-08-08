@@ -27,18 +27,13 @@ COPY . .
 
 RUN pnpm --filter @dtc/backend build
 
+RUN pnpm --filter @dtc/backend --prod deploy --legacy /production/backend
+
 RUN mkdir -p /production/server \
-    && cp -a /app/apps/backend/.medusa/server/. /production/server/
+    && cp -a /app/apps/backend/.medusa/server/. /production/server/ \
+    && cp -a /production/backend/node_modules /production/server/node_modules
 
-WORKDIR /production/server
-
-RUN pnpm install \
-    --prod \
-    --prefer-offline \
-    --no-frozen-lockfile \
-    --config.recursive-install=false
-
-RUN test -x node_modules/.bin/medusa
+RUN test -x /production/server/node_modules/.bin/medusa
 
 FROM node:22-bookworm-slim AS runner
 
