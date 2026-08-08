@@ -154,6 +154,20 @@ export default function Footer() {
             <span>Mercado Pago</span>
           </div>
         </div>
+        <div className="border-t border-white/10 py-4 text-center text-[10px] text-white/45">
+          <p>
+            Desarrollado por{" "}
+            <span className="font-medium text-white/65">Tomás Cortés</span>
+            <span aria-hidden="true"> · </span>
+            Contacto:{" "}
+            <a
+              href="mailto:tomascq97@gmail.com"
+              className="transition-colors hover:text-[var(--color-rose)]"
+            >
+              tomascq97@gmail.com
+            </a>
+          </p>
+        </div>
       </div>
     </footer>
   )
