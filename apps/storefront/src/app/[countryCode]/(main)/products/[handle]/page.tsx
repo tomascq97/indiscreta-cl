@@ -85,11 +85,19 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${product.title} | Indiscreta`,
-    description: `${product.title}`,
+    title: product.title,
+    description:
+      product.description ??
+      `${product.title} en Indiscreta. Moda femenina con despacho a todo Chile.`,
+    alternates: {
+      canonical: `/${params.countryCode}/products/${product.handle}`,
+    },
     openGraph: {
       title: `${product.title} | Indiscreta`,
-      description: `${product.title}`,
+      description:
+        product.description ??
+        `${product.title} en Indiscreta. Moda femenina con despacho a todo Chile.`,
+      url: `/${params.countryCode}/products/${product.handle}`,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }

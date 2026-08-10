@@ -7,7 +7,7 @@ import NewCollectionBanner from "@modules/home/components/new-collection-banner"
 import NewArrivals from "@modules/home/components/new-arrivals"
 
 export const metadata: Metadata = {
-  title: "Indiscreta | Moda femenina, calzado y accesorios",
+  title: "Moda femenina, calzado y accesorios",
   description:
     "Descubre Indiscreta: moda femenina, calzado y accesorios para mujeres que no pasan desapercibidas. Despachos a todo Chile.",
 }

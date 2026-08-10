@@ -63,8 +63,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   const metadata = {
-    title: `${collection.title} | Indiscreta`,
-    description: `Colección ${collection.title}`,
+    title: collection.title,
+    description: `Descubre la colección ${collection.title} en Indiscreta. Moda femenina con despacho a todo Chile.`,
+    alternates: {
+      canonical: `/${params.countryCode}/collections/${params.handle}`,
+    },
   } as Metadata
 
   return metadata

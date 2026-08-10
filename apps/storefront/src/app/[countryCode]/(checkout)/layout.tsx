@@ -1,5 +1,13 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
+import { Metadata } from "next"
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 function ArrowLeftIcon() {
   return (

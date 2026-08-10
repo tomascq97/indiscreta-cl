@@ -51,15 +51,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const productCategory = await getCategoryByHandle(params.category)
 
-    const title = productCategory.name + " | Indiscreta"
+    const title = productCategory.name
 
-    const description = productCategory.description ?? `Categoría ${title}.`
+    const description =
+      productCategory.description ??
+      `Descubre ${productCategory.name} en Indiscreta. Moda femenina con despacho a todo Chile.`
 
     return {
-      title: `${title} | Indiscreta`,
+      title,
       description,
       alternates: {
-        canonical: `${params.category.join("/")}`,
+        canonical: `/${params.countryCode}/categories/${params.category.join("/")}`,
       },
     }
   } catch {
