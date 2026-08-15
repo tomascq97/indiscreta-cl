@@ -46,6 +46,27 @@ export type BackendEnvironment = Record<
   MEDUSA_WORKER_MODE: MedusaWorkerMode;
   REDIS_URL?: string;
   S3?: S3FileConfiguration;
+  WEBPAY?: WebpayConfiguration;
+};
+
+export const webpayEnvironments = ["integration", "production"] as const;
+
+export type WebpayEnvironment = (typeof webpayEnvironments)[number];
+
+const webpayEnvironmentVariables = [
+  "WEBPAY_ENVIRONMENT",
+  "WEBPAY_COMMERCE_CODE",
+  "WEBPAY_API_KEY_SECRET",
+  "WEBPAY_RETURN_URL",
+  "WEBPAY_RESULT_URL",
+] as const;
+
+export type WebpayConfiguration = {
+  environment: WebpayEnvironment;
+  commerceCode: string;
+  apiKeySecret: string;
+  returnUrl: string;
+  resultUrl: string;
 };
 
 function isMedusaWorkerMode(value: string): value is MedusaWorkerMode {
@@ -84,6 +105,77 @@ function validateHttpUrl(name: string, value: string): void {
     MedusaError.Types.INVALID_DATA,
     `${name} must be a valid URL using http: or https:`,
   );
+}
+
+function validateHttpsUrl(name: string, value: string): void {
+  try {
+    if (new URL(value).protocol === "https:") {
+      return;
+    }
+  } catch {
+    // The common error below intentionally excludes the supplied value.
+  }
+
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    `${name} must be a valid URL using https: in production`,
+  );
+}
+
+function isWebpayEnvironment(value: string): value is WebpayEnvironment {
+  return webpayEnvironments.some((environment) => environment === value);
+}
+
+function validateWebpayEnvironment(
+  environment: NodeJS.ProcessEnv,
+  isProduction: boolean,
+): WebpayConfiguration | undefined {
+  const hasWebpayConfiguration = webpayEnvironmentVariables.some((name) =>
+    environment[name]?.trim(),
+  );
+
+  if (!hasWebpayConfiguration && !isProduction) {
+    return undefined;
+  }
+
+  const missingVariables = webpayEnvironmentVariables.filter(
+    (name) => !environment[name]?.trim(),
+  );
+
+  if (missingVariables.length) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `Missing required Webpay environment variables: ${missingVariables.join(", ")}`,
+    );
+  }
+
+  const webpayEnvironment = environment.WEBPAY_ENVIRONMENT!.trim();
+
+  if (!isWebpayEnvironment(webpayEnvironment)) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `WEBPAY_ENVIRONMENT must be one of: ${webpayEnvironments.join(", ")}`,
+    );
+  }
+
+  const returnUrl = environment.WEBPAY_RETURN_URL!.trim();
+  const resultUrl = environment.WEBPAY_RESULT_URL!.trim();
+
+  if (isProduction) {
+    validateHttpsUrl("WEBPAY_RETURN_URL", returnUrl);
+    validateHttpsUrl("WEBPAY_RESULT_URL", resultUrl);
+  } else {
+    validateHttpUrl("WEBPAY_RETURN_URL", returnUrl);
+    validateHttpUrl("WEBPAY_RESULT_URL", resultUrl);
+  }
+
+  return {
+    environment: webpayEnvironment,
+    commerceCode: environment.WEBPAY_COMMERCE_CODE!.trim(),
+    apiKeySecret: environment.WEBPAY_API_KEY_SECRET!.trim(),
+    returnUrl,
+    resultUrl,
+  };
 }
 
 function validateS3Environment(
@@ -198,6 +290,10 @@ export function validateBackendEnvironment(
   }
 
   const s3Configuration = validateS3Environment(environment, isProduction);
+  const webpayConfiguration = validateWebpayEnvironment(
+    environment,
+    isProduction,
+  );
 
   const requiredEnvironment = Object.fromEntries(
     requiredBackendEnvironmentVariables.map((name) => [
@@ -211,6 +307,7 @@ export function validateBackendEnvironment(
     MEDUSA_WORKER_MODE: workerMode,
     ...(redisUrl ? { REDIS_URL: redisUrl } : {}),
     ...(s3Configuration ? { S3: s3Configuration } : {}),
+    ...(webpayConfiguration ? { WEBPAY: webpayConfiguration } : {}),
   };
 }
 

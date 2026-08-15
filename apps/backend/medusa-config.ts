@@ -36,6 +36,24 @@ module.exports = defineConfig({
     ...buildRedisModules(environment.REDIS_URL),
     ...(fileModule ? [fileModule] : []),
     {
+      resolve: "./src/modules/webpay",
+    },
+    ...(environment.WEBPAY
+      ? [
+          {
+            resolve: "@medusajs/medusa/payment",
+            options: {
+              providers: [
+                {
+                  resolve: "./src/modules/webpay-payment",
+                  id: "webpay",
+                },
+              ],
+            },
+          },
+        ]
+      : []),
+    {
       resolve: "@medusajs/medusa/notification",
       options: {
         providers: [

@@ -20,7 +20,12 @@
         "S3_REGION",
         "S3_BUCKET",
         "S3_ENDPOINT",
-        "S3_FORCE_PATH_STYLE"
+        "S3_FORCE_PATH_STYLE",
+        "WEBPAY_ENVIRONMENT",
+        "WEBPAY_COMMERCE_CODE",
+        "WEBPAY_API_KEY_SECRET",
+        "WEBPAY_RETURN_URL",
+        "WEBPAY_RESULT_URL"
       ]
     },
     "dev": {

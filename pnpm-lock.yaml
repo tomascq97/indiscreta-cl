@@ -90,6 +90,9 @@ importers:
       resend:
         specifier: ^6.18.1
         version: 6.18.1(@react-email/render@2.0.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
+      transbank-sdk:
+        specifier: 6.1.1
+        version: 6.1.1
       zod:
         specifier: 4.2.0
         version: 4.2.0
@@ -8205,6 +8208,10 @@ packages:
 
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
+
+  transbank-sdk@6.1.1:
+    resolution: {integrity: sha512-T5YJSBl7LfSPLLqbLY3AVieSBCTNfN1nr3qA/5oLc3tTtwzZarYKL5aXirNFYamOT+W8pY04uzGRupSQArHUDA==}
+    engines: {node: '>=18.0.0'}
 
   triple-beam@1.4.1:
     resolution: {integrity: sha512-aZbgViZrg1QNcG+LULa7nhZpJTZSLm/mXnHXnbAbjmN5aSa0y7V+wvv6+4WaBtpISJzThKy+PIPxc1Nq1EJ9mg==}
@@ -18556,6 +18563,12 @@ snapshots:
   toidentifier@1.0.1: {}
 
   tr46@0.0.3: {}
+
+  transbank-sdk@6.1.1:
+    dependencies:
+      axios: 1.13.2
+    transitivePeerDependencies:
+      - debug
 
   triple-beam@1.4.1: {}
 
