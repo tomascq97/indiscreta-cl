@@ -47,6 +47,15 @@ const statusFromData = (
     return PaymentSessionStatus.CANCELED;
   }
 
+  if (
+    state === "rejected" ||
+    state === "inconsistent" ||
+    state === "create_failed" ||
+    state === "manual_review"
+  ) {
+    return PaymentSessionStatus.ERROR;
+  }
+
   return PaymentSessionStatus.PENDING;
 };
 

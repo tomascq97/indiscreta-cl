@@ -6,8 +6,15 @@ export const webpayAttemptStates = [
   "create_failed",
   "recovery_required",
   "cancelled",
+  "expired",
+  "committing",
   "approved_validated",
+  "rejected",
+  "inconsistent",
+  "manual_review",
+  "medusa_authorizing",
   "medusa_authorized",
+  "order_completing",
   "completed",
 ];
 
@@ -29,7 +36,16 @@ const WebpayAttempt = model
     payment_id: model.text().nullable(),
     order_id: model.text().nullable(),
     transbank_status: model.text().nullable(),
+    response_code: model.number().nullable(),
+    authorization_code: model.text().nullable(),
+    payment_type_code: model.text().nullable(),
+    installments_number: model.number().nullable(),
+    transaction_date: model.dateTime().nullable(),
+    card_last_four: model.text().nullable(),
     failure_code: model.text().nullable(),
+    commit_started_at: model.dateTime().nullable(),
+    committed_at: model.dateTime().nullable(),
+    completed_at: model.dateTime().nullable(),
   })
   .indexes([
     {
