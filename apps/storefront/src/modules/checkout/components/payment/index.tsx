@@ -13,6 +13,7 @@ import PaymentContainer, {
 import { RadioGroup } from "@headlessui/react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+import { selectActivePaymentSession } from "@lib/util/payment-session"
 
 const Payment = ({
   cart,
@@ -23,17 +24,18 @@ const Payment = ({
     id: string
   }[]
 }) => {
-  const activeSession = cart.payment_collection?.payment_sessions?.find(
-    (paymentSession) => paymentSession.status === "pending",
-  )
+  const initialActiveSession = selectActivePaymentSession(cart)
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardBrand, setCardBrand] = useState<string | null>(null)
   const [cardComplete, setCardComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    activeSession?.provider_id ?? "",
+    initialActiveSession?.provider_id ?? "",
   )
+  const activeSession = selectActivePaymentSession(cart, {
+    providerId: selectedPaymentMethod || undefined,
+  })
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -188,7 +190,11 @@ const Payment = ({
                 </div>
               </div>
 
-              <PaymentButton cart={cart} data-testid="submit-order-button" />
+              <PaymentButton
+                cart={cart}
+                selectedPaymentMethod={selectedPaymentMethod}
+                data-testid="submit-order-button"
+              />
             </>
           ) : (
             <button

@@ -1,5 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import { selectActivePaymentSession } from "./payment-session"
+
 type CheckoutCart = {
   billing_address?: unknown
   email?: string | null
@@ -65,11 +67,7 @@ export const isPaidByGiftCard = (cart: CheckoutCart) =>
   Boolean(cart.gift_cards?.length && cart.total === 0)
 
 export const hasPendingPaymentSession = (cart: CheckoutCart) =>
-  Boolean(
-    cart.payment_collection?.payment_sessions?.some(
-      (session) => session.status === "pending",
-    ),
-  )
+  Boolean(selectActivePaymentSession(cart))
 
 export const isPaymentReady = (cart: CheckoutCart) =>
   Boolean(

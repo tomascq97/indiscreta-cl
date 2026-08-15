@@ -36,6 +36,11 @@ export default async function initial_data_seed({
   );
 
   const countries = ["cl"];
+  const integrationPaymentProviders =
+    process.env.NODE_ENV !== "production" &&
+    process.env.WEBPAY_ENVIRONMENT === "integration"
+      ? ["pp_system_default", "pp_webpay-plus_webpay"]
+      : ["pp_system_default"];
 
   // Regional, shipping, product, and price values are CI/demo fixtures, not approved legal or commercial configuration.
   logger.info("Seeding store data...");
@@ -100,7 +105,7 @@ export default async function initial_data_seed({
           name: "Chile",
           currency_code: "clp",
           countries,
-          payment_providers: ["pp_system_default"],
+          payment_providers: integrationPaymentProviders,
         },
       ],
     },

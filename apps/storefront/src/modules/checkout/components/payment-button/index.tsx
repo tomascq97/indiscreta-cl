@@ -1,17 +1,24 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
+import { initiateWebpayPayment } from "@lib/data/webpay"
 import { convertToLocale } from "@lib/util/money"
+import { selectActivePaymentSession } from "@lib/util/payment-session"
+import { getPaymentButtonKind } from "@lib/util/payment-button-kind"
+import {
+  createSingleWebpayInitiation,
+  submitWebpayPost,
+} from "@lib/util/webpay-redirect"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
-import React, { useState } from "react"
+import React, { useRef, useState } from "react"
 import ErrorMessage from "../error-message"
 import { isOrderReady } from "@lib/util/checkout-rules"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
+  selectedPaymentMethod: string
   "data-testid": string
 }
 
@@ -26,24 +33,37 @@ const getPaymentLabel = (cart: HttpTypes.StoreCart) =>
 
 const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
+  selectedPaymentMethod,
   "data-testid": dataTestId,
 }) => {
   const notReady = !isOrderReady(cart)
-  const paymentSession = cart.payment_collection?.payment_sessions?.[0]
+  const paymentSession = selectActivePaymentSession(cart, {
+    providerId: selectedPaymentMethod,
+  })
 
-  switch (true) {
-    case isStripeLike(paymentSession?.provider_id):
+  switch (getPaymentButtonKind(paymentSession?.provider_id)) {
+    case "stripe":
       return (
         <StripePaymentButton
           notReady={notReady}
           cart={cart}
+          providerId={paymentSession?.provider_id ?? selectedPaymentMethod}
           data-testid={dataTestId}
         />
       )
 
-    case isManual(paymentSession?.provider_id):
+    case "manual":
       return (
         <ManualTestPaymentButton
+          cart={cart}
+          notReady={notReady}
+          data-testid={dataTestId}
+        />
+      )
+
+    case "webpay":
+      return (
+        <WebpayPaymentButton
           cart={cart}
           notReady={notReady}
           data-testid={dataTestId}
@@ -62,10 +82,12 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
 const StripePaymentButton = ({
   cart,
   notReady,
+  providerId,
   "data-testid": dataTestId,
 }: {
   cart: HttpTypes.StoreCart
   notReady: boolean
+  providerId: string
   "data-testid"?: string
 }) => {
   const [submitting, setSubmitting] = useState(false)
@@ -84,9 +106,9 @@ const StripePaymentButton = ({
   const stripe = useStripe()
   const elements = useElements()
   const card = elements?.getElement("card")
-  const session = cart.payment_collection?.payment_sessions?.find(
-    (paymentSession) => paymentSession.status === "pending",
-  )
+  const session = selectActivePaymentSession(cart, {
+    providerId,
+  })
 
   const disabled = !stripe || !elements
 
@@ -209,6 +231,63 @@ const ManualTestPaymentButton = ({
       <ErrorMessage
         error={errorMessage}
         data-testid="manual-payment-error-message"
+      />
+    </>
+  )
+}
+
+const WebpayPaymentButton = ({
+  cart,
+  notReady,
+  "data-testid": dataTestId,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+  "data-testid"?: string
+}) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const initiateRef = useRef<ReturnType<
+    typeof createSingleWebpayInitiation
+  > | null>(null)
+
+  initiateRef.current ??= createSingleWebpayInitiation(
+    initiateWebpayPayment,
+    submitWebpayPost,
+  )
+
+  const handlePayment = async () => {
+    if (submitting) return
+
+    setSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      await initiateRef.current?.()
+    } catch {
+      setErrorMessage(
+        "No pudimos iniciar Webpay. Tu carrito sigue disponible; inténtalo nuevamente.",
+      )
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        disabled={notReady || submitting}
+        isLoading={submitting}
+        onClick={handlePayment}
+        size="large"
+        className={paymentButtonClassName}
+        data-testid={dataTestId}
+      >
+        {submitting ? "Conectando con Webpay..." : getPaymentLabel(cart)}
+      </Button>
+
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="webpay-payment-error-message"
       />
     </>
   )
