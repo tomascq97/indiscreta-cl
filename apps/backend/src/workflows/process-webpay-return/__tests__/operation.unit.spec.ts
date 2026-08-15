@@ -1,5 +1,8 @@
 import type { ProcessWebpayReturnDependencies } from "../operation";
-import { processWebpayReturnOperation } from "../operation";
+import {
+  processWebpayReturnOperation,
+  recoverWebpayAttemptOperation,
+} from "../operation";
 
 type Attempt = Record<string, unknown> & {
   id: string;
@@ -342,5 +345,91 @@ describe("processWebpayReturnOperation", () => {
 
     expect(result.state).toBe("recovery_required");
     expect(harness.authorize).not.toHaveBeenCalled();
+  });
+});
+
+describe("recoverWebpayAttemptOperation", () => {
+  it("recovers an authorized status without calling commit", async () => {
+    const harness = createHarness();
+    harness.setAttempt({
+      state: "recovery_required",
+      commit_started_at: new Date(),
+    });
+
+    const result = await recoverWebpayAttemptOperation(
+      harness.dependencies,
+      "wpa_123",
+    );
+
+    expect(result.state).toBe("completed");
+    expect(harness.status).toHaveBeenCalledTimes(1);
+    expect(harness.commit).not.toHaveBeenCalled();
+  });
+
+  it("continues from an existing payment without authorizing again", async () => {
+    const harness = createHarness();
+    harness.setAttempt({
+      state: "recovery_required",
+      payment_id: "pay_existing",
+      committed_at: new Date(),
+      transbank_status: "AUTHORIZED",
+    });
+
+    const result = await recoverWebpayAttemptOperation(
+      harness.dependencies,
+      "wpa_123",
+    );
+
+    expect(result).toMatchObject({
+      state: "completed",
+      payment_id: "pay_existing",
+      order_id: "order_123",
+    });
+    expect(harness.authorize).not.toHaveBeenCalled();
+    expect(harness.status).not.toHaveBeenCalled();
+    expect(harness.commit).not.toHaveBeenCalled();
+  });
+
+  it("marks an attempt with an existing order completed without side effects", async () => {
+    const harness = createHarness();
+    harness.setAttempt({
+      state: "recovery_required",
+      payment_id: "pay_existing",
+      order_id: "order_existing",
+    });
+
+    const result = await recoverWebpayAttemptOperation(
+      harness.dependencies,
+      "wpa_123",
+    );
+
+    expect(result).toMatchObject({
+      state: "completed",
+      order_id: "order_existing",
+    });
+    expect(harness.authorize).not.toHaveBeenCalled();
+    expect(harness.complete).not.toHaveBeenCalled();
+    expect(harness.status).not.toHaveBeenCalled();
+    expect(harness.commit).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent recovery and performs status once", async () => {
+    const harness = createHarness();
+    harness.setAttempt({
+      state: "recovery_required",
+      commit_started_at: new Date(),
+    });
+
+    const [first, second] = await Promise.all([
+      recoverWebpayAttemptOperation(harness.dependencies, "wpa_123"),
+      recoverWebpayAttemptOperation(harness.dependencies, "wpa_123"),
+    ]);
+
+    expect(first.state).toBe("completed");
+    expect(second.state).toBe("completed");
+    expect(harness.status).toHaveBeenCalledTimes(1);
+    expect(harness.commit).not.toHaveBeenCalled();
+    expect(harness.authorize).toHaveBeenCalledTimes(1);
+    expect(harness.complete).toHaveBeenCalledTimes(1);
   });
 });

@@ -427,3 +427,70 @@ export async function processWebpayReturnOperation(
 
   return processCancellation(dependencies, input);
 }
+
+export async function recoverWebpayAttemptOperation(
+  dependencies: ProcessWebpayReturnDependencies,
+  attemptId: string,
+) {
+  const attempt =
+    await dependencies.webpayService.retrieveWebpayAttempt(attemptId);
+
+  return dependencies.lockingService.execute(
+    `webpay:attempt:${attempt.id}`,
+    async () => {
+      let current = await dependencies.webpayService.retrieveWebpayAttempt(
+        attempt.id,
+      );
+
+      if (terminalStates.has(current.state)) return current;
+      if (current.state !== "recovery_required") {
+        throw new MedusaError(
+          MedusaError.Types.NOT_ALLOWED,
+          "Webpay attempt does not require recovery",
+        );
+      }
+
+      if (current.order_id) {
+        return dependencies.webpayService.updateWebpayAttempts({
+          id: current.id,
+          state: "completed",
+          completed_at: current.completed_at ?? new Date(),
+          failure_code: null,
+        });
+      }
+
+      if (
+        current.payment_id ||
+        current.committed_at ||
+        current.transbank_status === "AUTHORIZED"
+      ) {
+        return reconcileMedusa(dependencies, current);
+      }
+
+      if (!current.token || !current.commit_started_at) {
+        return dependencies.webpayService.updateWebpayAttempts({
+          id: current.id,
+          state: "recovery_required",
+          failure_code: "manual_review_required",
+        });
+      }
+
+      let response: TransactionResponse;
+      try {
+        response = await dependencies.transaction.status(current.token);
+      } catch {
+        return dependencies.webpayService.updateWebpayAttempts({
+          id: current.id,
+          state: "recovery_required",
+          failure_code: "recovery_status_unavailable",
+        });
+      }
+
+      current = await persistTransactionResult(dependencies, current, response);
+      if (current.state !== "approved_validated") return current;
+
+      return reconcileMedusa(dependencies, current);
+    },
+    { timeout: 10 },
+  );
+}

@@ -30,7 +30,7 @@ export const WEBPAY_PROVIDER_ID = "pp_webpay-plus_webpay";
 
 const copyData = (data?: Record<string, unknown>) => ({ ...(data ?? {}) });
 
-const statusFromData = (
+export const statusFromData = (
   data?: Record<string, unknown>,
 ): PaymentSessionStatus => {
   const state = data?.webpay_state;
@@ -43,7 +43,7 @@ const statusFromData = (
     return PaymentSessionStatus.AUTHORIZED;
   }
 
-  if (state === "cancelled") {
+  if (state === "cancelled" || state === "expired") {
     return PaymentSessionStatus.CANCELED;
   }
 
@@ -51,7 +51,8 @@ const statusFromData = (
     state === "rejected" ||
     state === "inconsistent" ||
     state === "create_failed" ||
-    state === "manual_review"
+    state === "manual_review" ||
+    state === "recovery_required"
   ) {
     return PaymentSessionStatus.ERROR;
   }
