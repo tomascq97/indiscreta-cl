@@ -132,12 +132,25 @@ describe("validateBackendEnvironment", () => {
     );
   });
 
+  it("rejects Webpay Integration in production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validProductionInfrastructure,
+        ...validWebpayEnvironment,
+        WEBPAY_RETURN_URL: "https://backend.invalid/webpay/return",
+        WEBPAY_RESULT_URL: "https://store.invalid/cl/webpay/result",
+      }),
+    ).toThrow("Production requires WEBPAY_ENVIRONMENT=production");
+  });
+
   it("requires HTTPS Webpay URLs in production", () => {
     expect(() =>
       validateBackendEnvironment({
         ...validEnvironment,
         ...validProductionInfrastructure,
         ...validWebpayEnvironment,
+        WEBPAY_ENVIRONMENT: "production",
       }),
     ).toThrow("WEBPAY_RETURN_URL must be a valid URL using https:");
   });

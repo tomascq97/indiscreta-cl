@@ -158,6 +158,13 @@ function validateWebpayEnvironment(
     );
   }
 
+  if (isProduction && webpayEnvironment !== "production") {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "Production requires WEBPAY_ENVIRONMENT=production",
+    );
+  }
+
   const returnUrl = environment.WEBPAY_RETURN_URL!.trim();
   const resultUrl = environment.WEBPAY_RESULT_URL!.trim();
 
