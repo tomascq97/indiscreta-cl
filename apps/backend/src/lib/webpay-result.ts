@@ -11,6 +11,7 @@ type WebpayResultAttempt = Record<string, unknown> & {
   amount: unknown;
   currency_code: string;
   order_id?: string | null;
+  authorization_code?: string | null;
   payment_type_code?: string | null;
   installments_number?: number | null;
   transaction_date?: Date | string | null;
@@ -41,18 +42,24 @@ function isoDate(value: Date | string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-export function sanitizeWebpayResult(attempt: WebpayResultAttempt) {
+export function sanitizeWebpayResult(
+  attempt: WebpayResultAttempt,
+  orderDisplayId: number | null = null,
+) {
   const state = publicState(attempt.state);
 
   return {
     id: attempt.id,
     state,
     order_id: state === "approved" ? (attempt.order_id ?? null) : null,
+    order_display_id: state === "approved" ? orderDisplayId : null,
     amount: Number(attempt.amount),
     currency_code: attempt.currency_code.toLowerCase(),
     date: isoDate(
       attempt.transaction_date ?? attempt.completed_at ?? attempt.updated_at,
     ),
+    authorization_code:
+      state === "approved" ? (attempt.authorization_code ?? null) : null,
     payment_type: attempt.payment_type_code ?? null,
     installments:
       attempt.installments_number && attempt.installments_number > 0
@@ -68,9 +75,11 @@ export function unavailableWebpayResult() {
     id: null,
     state: "unavailable" as const,
     order_id: null,
+    order_display_id: null,
     amount: null,
     currency_code: null,
     date: null,
+    authorization_code: null,
     payment_type: null,
     installments: null,
     card_last_four: null,

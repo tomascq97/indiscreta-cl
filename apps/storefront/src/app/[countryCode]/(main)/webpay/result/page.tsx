@@ -39,15 +39,35 @@ export default async function WebpayResultPage({ searchParams }: Props) {
         >
           {view.eyebrow}
         </p>
+
         <h1 className="mt-3 font-[var(--font-editorial)] text-4xl font-medium tracking-[-0.03em] text-black small:text-5xl">
           {view.title}
         </h1>
+
         <p className="mt-5 max-w-xl text-sm leading-7 text-neutral-600">
           {result.message}
         </p>
 
         {result.amount !== null && result.currency_code && (
           <dl className="mt-8 grid gap-5 border-y border-neutral-200 py-6 text-sm small:grid-cols-2">
+            {result.order_display_id !== null && (
+              <div>
+                <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  Número de pedido
+                </dt>
+                <dd className="mt-2 font-semibold text-black">
+                  #{result.order_display_id}
+                </dd>
+              </div>
+            )}
+
+            <div>
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                Comercio
+              </dt>
+              <dd className="mt-2 text-black">Indiscreta SpA</dd>
+            </div>
+
             <div>
               <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 Monto
@@ -59,6 +79,7 @@ export default async function WebpayResultPage({ searchParams }: Props) {
                 })}
               </dd>
             </div>
+
             {date && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
@@ -67,6 +88,18 @@ export default async function WebpayResultPage({ searchParams }: Props) {
                 <dd className="mt-2 text-black">{date}</dd>
               </div>
             )}
+
+            {result.authorization_code && (
+              <div>
+                <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                  Código de autorización
+                </dt>
+                <dd className="mt-2 text-black">
+                  {result.authorization_code}
+                </dd>
+              </div>
+            )}
+
             {result.payment_type && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
@@ -75,6 +108,7 @@ export default async function WebpayResultPage({ searchParams }: Props) {
                 <dd className="mt-2 text-black">{result.payment_type}</dd>
               </div>
             )}
+
             {result.installments && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
@@ -83,6 +117,7 @@ export default async function WebpayResultPage({ searchParams }: Props) {
                 <dd className="mt-2 text-black">{result.installments}</dd>
               </div>
             )}
+
             {result.card_last_four && (
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
@@ -93,6 +128,15 @@ export default async function WebpayResultPage({ searchParams }: Props) {
                 </dd>
               </div>
             )}
+
+            <div className="small:col-span-2">
+              <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                Descripción
+              </dt>
+              <dd className="mt-2 text-black">
+                Compra realizada en indiscreta.cl
+              </dd>
+            </div>
           </dl>
         )}
 
@@ -105,6 +149,7 @@ export default async function WebpayResultPage({ searchParams }: Props) {
               Ver confirmación del pedido
             </LocalizedClientLink>
           )}
+
           {view.canReturnToCheckout && (
             <LocalizedClientLink
               href="/checkout?step=payment"
@@ -113,6 +158,7 @@ export default async function WebpayResultPage({ searchParams }: Props) {
               Volver al checkout
             </LocalizedClientLink>
           )}
+
           {!view.canOpenOrder && !view.canReturnToCheckout && (
             <LocalizedClientLink
               href="/store"

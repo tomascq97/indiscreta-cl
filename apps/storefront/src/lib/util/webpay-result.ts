@@ -9,9 +9,11 @@ export type WebpayResult = {
   id: string | null
   state: WebpayResultState
   order_id: string | null
+  order_display_id: number | null
   amount: number | null
   currency_code: string | null
   date: string | null
+  authorization_code: string | null
   payment_type: string | null
   installments: number | null
   card_last_four: string | null
@@ -22,9 +24,11 @@ export const unavailableWebpayResult = (): WebpayResult => ({
   id: null,
   state: "unavailable",
   order_id: null,
+  order_display_id: null,
   amount: null,
   currency_code: null,
   date: null,
+  authorization_code: null,
   payment_type: null,
   installments: null,
   card_last_four: null,

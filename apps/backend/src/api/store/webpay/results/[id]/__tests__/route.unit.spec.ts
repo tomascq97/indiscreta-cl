@@ -13,11 +13,22 @@ function response() {
   return res;
 }
 
-function request(retrieveWebpayAttempt: jest.Mock) {
+function request(
+  retrieveWebpayAttempt: jest.Mock,
+  graph: jest.Mock = jest.fn().mockResolvedValue({
+    data: [{ id: "order_123", display_id: 1234 }],
+  }),
+) {
   return {
     params: { id: "wpa_public" },
     scope: {
-      resolve: jest.fn(() => ({ retrieveWebpayAttempt })),
+      resolve: jest.fn((key) => {
+        if (key === "query") {
+          return { graph };
+        }
+
+        return { retrieveWebpayAttempt };
+      }),
     },
   } as unknown as MedusaRequest;
 }
@@ -30,6 +41,7 @@ describe("GET /store/webpay/results/:id", () => {
       amount: 15990,
       currency_code: "clp",
       order_id: "order_123",
+      authorization_code: "1213",
       transaction_date: new Date("2026-08-14T12:00:00.000Z"),
       payment_type_code: "VD",
       installments_number: 0,
@@ -55,11 +67,44 @@ describe("GET /store/webpay/results/:id", () => {
     );
     const serialized = JSON.stringify(first.json.mock.calls[0][0]);
     expect(serialized).toContain('"state":"approved"');
+    expect(serialized).toContain('"order_display_id":1234');
+    expect(serialized).toContain('"authorization_code":"1213"');
     expect(serialized).not.toContain("token-secret");
     expect(serialized).not.toContain("buy-secret");
     expect(serialized).not.toContain("session-secret");
     expect(serialized).not.toContain("payses-secret");
     expect(serialized).not.toContain("paycol-secret");
+  });
+
+  it("keeps an approved result available when order enrichment fails", async () => {
+    const retrieve = jest.fn().mockResolvedValue({
+      id: "wpa_public",
+      state: "completed",
+      amount: 15990,
+      currency_code: "clp",
+      order_id: "order_123",
+      authorization_code: "1213",
+      transaction_date: new Date("2026-08-14T12:00:00.000Z"),
+      payment_type_code: "VD",
+      installments_number: 0,
+      card_last_four: "6623",
+    });
+
+    const graph = jest.fn().mockRejectedValue(new Error("order unavailable"));
+    const req = request(retrieve, graph);
+    const res = response();
+
+    await GET(req, res as unknown as MedusaResponse);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      result: expect.objectContaining({
+        state: "approved",
+        order_id: "order_123",
+        order_display_id: null,
+        authorization_code: "1213",
+      }),
+    });
   });
 
   it("returns a sanitized unavailable result for an unknown attempt", async () => {

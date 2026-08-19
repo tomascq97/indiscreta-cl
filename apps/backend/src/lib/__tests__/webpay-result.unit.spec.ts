@@ -23,13 +23,15 @@ const attempt = {
 
 describe("sanitizeWebpayResult", () => {
   it("returns the approved allow-list", () => {
-    expect(sanitizeWebpayResult(attempt)).toEqual({
+    expect(sanitizeWebpayResult(attempt, 1234)).toEqual({
       id: "wpa_public",
       state: "approved",
       order_id: "order_123",
+      order_display_id: 1234,
       amount: 15990,
       currency_code: "clp",
       date: "2026-08-14T12:00:00.000Z",
+      authorization_code: "1213",
       payment_type: "VD",
       installments: null,
       card_last_four: "6623",
@@ -50,6 +52,8 @@ describe("sanitizeWebpayResult", () => {
 
     expect(result.state).toBe(publicState);
     expect(result.order_id).toBeNull();
+    expect(result.order_display_id).toBeNull();
+    expect(result.authorization_code).toBeNull();
   });
 
   it("never exposes transaction or Medusa correlation identifiers", () => {
@@ -60,7 +64,7 @@ describe("sanitizeWebpayResult", () => {
     expect(serialized).not.toContain("internal-order");
     expect(serialized).not.toContain("payses_123");
     expect(serialized).not.toContain("pay_col_123");
-    expect(serialized).not.toContain("1213");
+    expect(serialized).toContain('"authorization_code":"1213"');
   });
 
   it("returns a stable unavailable result", () => {
@@ -68,6 +72,8 @@ describe("sanitizeWebpayResult", () => {
       id: null,
       state: "unavailable",
       order_id: null,
+      order_display_id: null,
+      authorization_code: null,
       amount: null,
     });
   });
