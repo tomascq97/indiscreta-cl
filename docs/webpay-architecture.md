@@ -316,10 +316,23 @@ the database. `PaymentSession.data` is never the durable source of truth.
 4. No amount, `buy_order`, API key, or approval flag supplied by the browser is
    accepted as authoritative.
 
+The browser-to-Webpay transition is therefore an HTML form `POST`. This must
+not be confused with the return from Webpay to the commerce backend.
+
 ### 4. Handle the Transbank return
 
-The public HTTPS return URL belongs to the backend. It accepts only the HTTP
-methods and field names documented by the selected Transbank SDK/version.
+The public HTTPS return URL belongs to the backend. For Webpay Plus API 1.1 and
+newer, Transbank returns to it with HTTP `GET`. Older integrations used `POST`;
+the backend keeps `POST` as defensive compatibility, with both handlers
+delegating to one normalizer and one transactional processor.
+
+The allow-list for either method is `token_ws`, `TBK_TOKEN`,
+`TBK_ORDEN_COMPRA`, and `TBK_ID_SESION`. The normal approved/rejected return
+contains `token_ws`. A cancellation/error recovery can contain the three
+`TBK_*` fields (and may also contain `token_ws`). The documented Integration
+timeout after ten minutes is an empty `GET`. Extra parameters are ignored and
+an input without a valid documented correlation is handled as unavailable;
+it never triggers `commit()`.
 
 For an approved/rejected payment return containing `token_ws`:
 
@@ -353,6 +366,14 @@ For a cancellation/abandonment return without `token_ws`:
 The backend returns a `303` redirect to a storefront result URL containing only
 an opaque internal result/attempt identifier. It must not place the token or
 authorization code in the query string.
+
+Because API 1.1+ places `token_ws` in the incoming query string, the handler
+must process it immediately server-side, must never render it, and must redact
+the request URL before the application access logger completes. The final
+`Location` is a clean storefront URL with only `webpay_result=<opaque-id>`.
+Quick Tunnel does not provide a request access-log redaction guarantee, so its
+ephemeral logs and process lifetime are treated as sensitive E2E artifacts and
+must not be retained or published.
 
 ### 5. Complete the Medusa payment and order
 

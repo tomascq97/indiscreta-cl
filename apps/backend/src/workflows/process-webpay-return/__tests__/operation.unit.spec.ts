@@ -69,6 +69,7 @@ function createHarness(overrides?: {
   const complete =
     overrides?.complete ?? jest.fn().mockResolvedValue({ id: "order_123" });
   const updateSession = jest.fn().mockResolvedValue({});
+  const deleteSession = jest.fn().mockResolvedValue(undefined);
 
   const dependencies = {
     webpayService: {
@@ -86,6 +87,7 @@ function createHarness(overrides?: {
     paymentService: {
       updatePaymentSession: updateSession,
       authorizePaymentSession: authorize,
+      deletePaymentSession: deleteSession,
     },
     lockingService: {
       execute: jest.fn(
@@ -111,6 +113,7 @@ function createHarness(overrides?: {
     authorize,
     complete,
     updateSession,
+    deleteSession,
     getAttempt: () => attempt,
     setAttempt: (data: Partial<Attempt>) => {
       attempt = { ...attempt, ...data };
@@ -137,6 +140,7 @@ describe("processWebpayReturnOperation", () => {
     expect(harness.status).not.toHaveBeenCalled();
     expect(harness.authorize).toHaveBeenCalledTimes(1);
     expect(harness.complete).toHaveBeenCalledWith("cart_123");
+    expect(harness.deleteSession).not.toHaveBeenCalled();
     expect(harness.updateSession).toHaveBeenCalledWith(
       expect.objectContaining({ id: "payses_123", amount: 15990 }),
     );
@@ -145,19 +149,24 @@ describe("processWebpayReturnOperation", () => {
   it.each([
     ["a non-zero response code", { ...authorizedResponse, response_code: -1 }],
     ["a failed status", { ...authorizedResponse, status: "FAILED" }],
-  ])("rejects %s without authorizing Medusa", async (_name, response) => {
-    const harness = createHarness({
-      commit: jest.fn().mockResolvedValue(response),
-    });
+  ])(
+    "rejects %s, releases its payment session, and does not authorize Medusa",
+    async (_name, response) => {
+      const harness = createHarness({
+        commit: jest.fn().mockResolvedValue(response),
+      });
 
-    const result = await processWebpayReturnOperation(harness.dependencies, {
-      token_ws: "token-123",
-    });
+      const result = await processWebpayReturnOperation(harness.dependencies, {
+        token_ws: "token-123",
+      });
 
-    expect(result.state).toBe("rejected");
-    expect(harness.authorize).not.toHaveBeenCalled();
-    expect(harness.complete).not.toHaveBeenCalled();
-  });
+      expect(result.state).toBe("rejected");
+      expect(harness.deleteSession).toHaveBeenCalledTimes(1);
+      expect(harness.deleteSession).toHaveBeenCalledWith("payses_123");
+      expect(harness.authorize).not.toHaveBeenCalled();
+      expect(harness.complete).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ["amount", { ...authorizedResponse, amount: 1 }],
@@ -235,6 +244,8 @@ describe("processWebpayReturnOperation", () => {
     });
 
     expect(result.state).toBe("rejected");
+    expect(harness.deleteSession).toHaveBeenCalledTimes(1);
+    expect(harness.deleteSession).toHaveBeenCalledWith("payses_123");
     expect(harness.authorize).not.toHaveBeenCalled();
   });
 
@@ -275,7 +286,7 @@ describe("processWebpayReturnOperation", () => {
     expect(status).toHaveBeenCalledTimes(2);
   });
 
-  it("records a documented cancellation return", async () => {
+  it("records a documented cancellation return and releases its payment session", async () => {
     const harness = createHarness();
 
     const result = await processWebpayReturnOperation(harness.dependencies, {
@@ -288,7 +299,14 @@ describe("processWebpayReturnOperation", () => {
       state: "cancelled",
       failure_code: "user_cancelled",
     });
+
+    expect(harness.deleteSession).toHaveBeenCalledTimes(1);
+    expect(harness.deleteSession).toHaveBeenCalledWith("payses_123");
+
     expect(harness.commit).not.toHaveBeenCalled();
+    expect(harness.status).not.toHaveBeenCalled();
+    expect(harness.authorize).not.toHaveBeenCalled();
+    expect(harness.complete).not.toHaveBeenCalled();
   });
 
   it("keeps a Medusa authorization failure recoverable", async () => {

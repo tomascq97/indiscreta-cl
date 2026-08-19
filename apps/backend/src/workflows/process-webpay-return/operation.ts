@@ -34,7 +34,9 @@ type WebpayService = {
 
 type PaymentService = Pick<
   IPaymentModuleService,
-  "updatePaymentSession" | "authorizePaymentSession"
+  | "updatePaymentSession"
+  | "authorizePaymentSession"
+  | "deletePaymentSession"
 >;
 
 type TransactionResponse = Record<string, unknown> & {
@@ -266,12 +268,19 @@ async function persistTransactionResult(
   }
 
   if (classification === "rejected") {
-    return dependencies.webpayService.updateWebpayAttempts({
-      id: attempt.id,
-      state: "rejected",
-      failure_code: "transbank_rejected",
-      ...fields,
-    });
+    const rejectedAttempt =
+      await dependencies.webpayService.updateWebpayAttempts({
+        id: attempt.id,
+        state: "rejected",
+        failure_code: "transbank_rejected",
+        ...fields,
+      });
+
+    await dependencies.paymentService.deletePaymentSession(
+      attempt.payment_session_id,
+    );
+
+    return rejectedAttempt;
   }
 
   if (classification === "unknown") {
@@ -407,11 +416,18 @@ async function processCancellation(
       if (terminalStates.has(current.state) || current.committed_at)
         return current;
 
-      return dependencies.webpayService.updateWebpayAttempts({
-        id: current.id,
-        state: "cancelled",
-        failure_code: "user_cancelled",
-      });
+      const cancelledAttempt =
+        await dependencies.webpayService.updateWebpayAttempts({
+          id: current.id,
+          state: "cancelled",
+          failure_code: "user_cancelled",
+        });
+
+      await dependencies.paymentService.deletePaymentSession(
+        current.payment_session_id,
+      );
+
+      return cancelledAttempt;
     },
     { timeout: 10 },
   );
