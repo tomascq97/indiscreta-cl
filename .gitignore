@@ -66,3 +66,7 @@ Thumbs.db
 # Local development backups
 *.backup
 *.backup-*
+
+# Local database / Redis dumps
+*.dump
+dump.rdb
