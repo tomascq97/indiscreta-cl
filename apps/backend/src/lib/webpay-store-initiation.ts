@@ -16,17 +16,13 @@ export type StoreWebpayInitiationResponse = {
 
 export function assertIntegrationWebpayEnabled(
   environment: BackendEnvironment,
-  nodeEnvironment = process.env.NODE_ENV,
 ): asserts environment is BackendEnvironment & {
   WEBPAY: NonNullable<BackendEnvironment["WEBPAY"]>;
 } {
-  if (
-    nodeEnvironment === "production" ||
-    environment.WEBPAY?.environment !== "integration"
-  ) {
+  if (!environment.WEBPAY) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "Webpay checkout initiation is only enabled in integration",
+      "Webpay checkout initiation requires Webpay configuration",
     );
   }
 }

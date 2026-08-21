@@ -29,20 +29,30 @@ describe("Webpay Store initiation boundary", () => {
     ).toThrow();
   });
 
-  it("allows only the integration environment", () => {
+  it("allows Webpay initiation in integration", () => {
     expect(() =>
       assertIntegrationWebpayEnabled(
         validateBackendEnvironment(baseEnvironment),
-        "development",
       ),
     ).not.toThrow();
+  });
+
+  it("allows Webpay initiation in production", () => {
+    const productionEnvironment = {
+      ...baseEnvironment,
+      WEBPAY_ENVIRONMENT: "production",
+      WEBPAY_COMMERCE_CODE: "597053095992",
+      WEBPAY_API_KEY_SECRET: "production-secret",
+      WEBPAY_RETURN_URL:
+        "https://dtcbackend-production-2902.up.railway.app/webpay/return",
+      WEBPAY_RESULT_URL: "https://indiscreta.cl/cl/webpay/result",
+    };
 
     expect(() =>
       assertIntegrationWebpayEnabled(
-        validateBackendEnvironment(baseEnvironment),
-        "production",
+        validateBackendEnvironment(productionEnvironment),
       ),
-    ).toThrow("only enabled in integration");
+    ).not.toThrow();
   });
 
   it("returns only a token and trusted Transbank URL", () => {
