@@ -608,3 +608,142 @@ commit, recovery, or production activation:
 4. Retention period and access policy for Webpay attempt records.
 5. Whether the system/manual payment provider is removed entirely from the
    Chile region or retained only in isolated CI/test seed data.
+
+## Production activation record — 2026-08-21
+
+Webpay Plus completed its first controlled production activation for Indiscreta
+SpA on 2026-08-21.
+
+### Production configuration
+
+The production deployment uses:
+
+- Transbank product: Webpay Plus.
+- Production commerce code: `597053095992`.
+- Backend environment: `WEBPAY_ENVIRONMENT=production`.
+- Backend return endpoint:
+  `https://dtcbackend-production-2902.up.railway.app/webpay/return`.
+- Storefront result page:
+  `https://indiscreta.cl/cl/webpay/result`.
+- Payment provider ID: `pp_webpay-plus_webpay`.
+- Region: Chile.
+- Sales channel: `Indiscreta Online`.
+- Store: `Indiscreta`.
+- Stock location: `Bodega Indiscreta`.
+
+The production API secret is stored only as a Railway environment variable and
+must never be committed to Git, written to documentation, or exposed in logs.
+
+### Production database readiness
+
+The production database was verified before the first real transaction.
+
+The following Webpay migrations were present:
+
+- `Migration20260815005944`
+- `Migration20260815013201`
+
+The `webpay_attempt` table was present.
+
+The following payment providers were registered:
+
+- `pp_system_default`
+- `pp_webpay-plus_webpay`
+
+Webpay Plus was explicitly associated with the Chile region before the
+production transaction.
+
+### Production-enablement fixes
+
+Two production issues were discovered and corrected during activation.
+
+Commit `03043b5` (`fix: render product pages dynamically`) changed product detail
+pages to server-render on demand rather than relying on static product paths.
+This allows products created in Medusa after a storefront build to be opened
+without rebuilding the storefront.
+
+Commit `33647ff` (`fix: enable Webpay checkout in production`) removed the
+certification-only guard that intentionally prevented Store Webpay initiation
+when Node was running in production. Webpay initiation now requires valid
+Webpay configuration while permitting both integration and production
+environments.
+
+Before deployment:
+
+- storefront tests passed: `67/67`;
+- backend tests passed: `114/114`;
+- storefront production build succeeded;
+- backend production build succeeded.
+
+### First real production transaction
+
+Transbank required a real production transaction using a temporary product
+priced at CLP 50.
+
+The transaction completed successfully with the following non-sensitive
+evidence:
+
+- Amount: `50 CLP`.
+- Attempt state: `completed`.
+- Transbank response code: `0`.
+- Payment type: `VD`.
+- Payment ID created: yes.
+- Order ID created: yes.
+- `commit_started_at`: present.
+- `committed_at`: present.
+- `completed_at`: present.
+- Matching Medusa Payment rows: `1`.
+- Matching Medusa Order rows: `1`.
+- Completed attempts for amount CLP 50 during the validation window: `1`.
+
+The production workflow therefore completed:
+
+`Checkout -> Webpay create -> Transbank -> return -> commit -> Medusa Payment -> Medusa Order -> approved result page`
+
+No duplicate Payment, Order, or Webpay attempt was observed.
+
+Authorization codes, tokens, API secrets, and complete card information are not
+recorded in this document.
+
+### Validation product lifecycle
+
+A temporary product named `Producto de prueba Transbank` was published to
+`Indiscreta Online` at CLP 50 for the required production transaction.
+
+After the successful transaction, the product was returned to `Draft` status so
+that it is retained for auditability but is no longer available for sale in the
+public storefront.
+
+The production Order, Payment, and Webpay attempt created during validation must
+be retained as evidence and must not be deleted as part of catalog cleanup.
+
+### Current production status
+
+At the end of the activation procedure:
+
+- Webpay Plus production credentials are configured.
+- Webpay Plus is registered and enabled in Medusa.
+- Webpay Plus is associated with the Chile region.
+- The public storefront and product detail routes respond successfully.
+- A real production payment has completed successfully.
+- Payment and Order creation were verified as idempotent for the production
+  transaction.
+- The temporary CLP 50 validation product is no longer publicly available.
+
+Webpay Plus is therefore technically operational in production.
+
+### Remaining operational cleanup
+
+The following items are operational cleanup tasks and are not blockers for the
+successful Webpay production activation:
+
+1. Remove `pp_system_default` from the Chile region after confirming that no
+   production workflow depends on it.
+2. Restore and verify the intended commercial shipping rates after the temporary
+   CLP 0 validation shipping method.
+3. Publish the first commercial Indiscreta products with real inventory,
+   categories, media, and shipping configuration.
+4. Define the retention and administrative access policy for `webpay_attempt`
+   records.
+5. Keep database and Redis dump files outside Git; `*.dump` and `dump.rdb` are
+   ignored by the repository.
