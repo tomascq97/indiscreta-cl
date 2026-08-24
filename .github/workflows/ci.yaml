@@ -105,7 +105,7 @@ jobs:
           pnpm exec turbo build --filter=@dtc/backend --force
           ln -s "$GITHUB_WORKSPACE/apps/backend/node_modules" apps/backend/.medusa/server/node_modules
 
-          setsid pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
+          setsid env NODE_ENV=test pnpm --dir apps/backend/.medusa/server start > "$RUNNER_TEMP/medusa.log" 2>&1 &
           medusa_pid=$!
 
           cleanup() {
@@ -144,10 +144,10 @@ jobs:
       - name: Verify separate Medusa server and worker processes
         shell: bash
         run: |
-          setsid pnpm --dir apps/backend/.medusa/server run start:server > "$RUNNER_TEMP/medusa-server.log" 2>&1 &
+          setsid env NODE_ENV=test pnpm --dir apps/backend/.medusa/server run start:server > "$RUNNER_TEMP/medusa-server.log" 2>&1 &
           server_pid=$!
           # The alternate port prevents collisions in this single CI runner; it does not expose the worker publicly.
-          setsid env PORT=9001 pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
+          setsid env NODE_ENV=test PORT=9001 pnpm --dir apps/backend/.medusa/server run start:worker > "$RUNNER_TEMP/medusa-worker.log" 2>&1 &
           worker_pid=$!
 
           cleanup() {
