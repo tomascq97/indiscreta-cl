@@ -123,11 +123,11 @@ export default async function Nav() {
             <div className="flex items-center justify-end gap-5 sm:gap-7">
               <LocalizedClientLink
                 href="/account"
-                className="hidden items-center gap-2 text-xs font-medium text-black transition-opacity hover:opacity-60 sm:flex"
+                className="flex items-center gap-2 text-xs font-medium text-black transition-opacity hover:opacity-60"
                 data-testid="nav-account-link"
               >
                 <AccountIcon />
-                <span>Cuenta</span>
+                <span className="hidden lg:inline">Cuenta</span>
               </LocalizedClientLink>
 
               <Suspense
