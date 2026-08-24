@@ -83,7 +83,9 @@ jobs:
 
       - name: Migrate and seed isolated Medusa database
         working-directory: apps/backend
-        run: pnpm exec medusa db:migrate
+        run: |
+          pnpm exec medusa db:migrate
+          pnpm run seed
 
       - name: Export CI publishable key
         shell: bash
