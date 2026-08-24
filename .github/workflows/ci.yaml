@@ -123,6 +123,9 @@ jobs:
 
             if ! kill -0 "$medusa_pid" 2>/dev/null; then
               echo "Medusa stopped before becoming ready." >&2
+              echo "===== medusa.log =====" >&2
+              cat "$RUNNER_TEMP/medusa.log" >&2 || true
+              echo "===== end medusa.log =====" >&2
               exit 1
             fi
 
