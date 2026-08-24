@@ -55,100 +55,56 @@ const AccountNav = ({
     setMobileOpen(false)
   }, [pathname])
 
-  useEffect(() => {
-    if (!mobileOpen) {
-      document.body.style.overflow = ""
-      return
-    }
-
-    document.body.style.overflow = "hidden"
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMobileOpen(false)
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape)
-
-    return () => {
-      document.body.style.overflow = ""
-      window.removeEventListener("keydown", handleEscape)
-    }
-  }, [mobileOpen])
-
   return (
     <>
-      {/* MOBILE / TABLET */}
-      <div className="lg:hidden" data-testid="account-nav-mobile">
-        <div className="flex min-h-14 items-center justify-between border border-neutral-200 bg-white px-4">
-          <div className="min-w-0">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--color-rose-dark)]">
-              Mi cuenta
-            </p>
-
-            <p className="mt-0.5 truncate text-sm font-semibold text-black">
-              {currentItem.label}
-            </p>
-          </div>
-
+      {/* MOBILE / TABLET — inline, sin segundo sidebar */}
+      <div
+        className="lg:hidden"
+        data-testid="account-nav-mobile"
+      >
+        <div className="border border-neutral-200 bg-white">
           <button
             type="button"
-            onClick={() => setMobileOpen(true)}
+            onClick={() => setMobileOpen((open) => !open)}
             aria-expanded={mobileOpen}
-            aria-controls="mobile-account-menu"
-            className="ml-4 flex min-h-10 items-center gap-2 border-l border-neutral-200 pl-4 text-[10px] font-bold uppercase tracking-[0.14em] text-black"
+            aria-controls="mobile-account-navigation"
+            className="flex min-h-16 w-full items-center justify-between px-5 text-left"
           >
-            Menú
-            <span aria-hidden="true" className="text-base leading-none">
-              ☰
-            </span>
+            <div className="min-w-0">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--color-rose-dark)]">
+                Mi cuenta
+              </p>
+
+              <p className="mt-1 truncate text-sm font-semibold text-black">
+                {currentItem.label}
+              </p>
+            </div>
+
+            <div className="ml-5 flex items-center gap-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-black">
+                Menú
+              </span>
+
+              <span
+                aria-hidden="true"
+                className={`text-lg leading-none transition-transform duration-200 ${
+                  mobileOpen ? "rotate-180" : ""
+                }`}
+              >
+                ↓
+              </span>
+            </div>
           </button>
-        </div>
 
-        {mobileOpen && (
-          <div className="fixed inset-0 z-[100]">
-            <button
-              type="button"
-              aria-label="Cerrar menú"
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setMobileOpen(false)}
-            />
-
-            <aside
-              id="mobile-account-menu"
-              className="absolute right-0 top-0 flex h-full w-[88%] max-w-sm flex-col bg-white shadow-2xl"
-              aria-label="Navegación de cuenta"
-            >
-              <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-6">
-                <div className="min-w-0 pr-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-rose-dark)]">
-                    Indiscreta
-                  </p>
-
-                  <p className="mt-2 text-xl font-bold uppercase tracking-[-0.03em] text-black">
-                    Mi cuenta
-                  </p>
-
-                  <p className="mt-2 truncate text-sm text-neutral-500">
-                    {customer?.first_name
-                      ? `Hola, ${customer.first_name}`
-                      : customer?.email}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Cerrar menú"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center border border-neutral-200 text-xl text-black transition-colors hover:bg-neutral-50"
-                >
-                  ×
-                </button>
-              </div>
-
+          <div
+            id="mobile-account-navigation"
+            className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+              mobileOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+            }`}
+          >
+            <div className="overflow-hidden">
               <nav
-                className="flex-1 overflow-y-auto"
+                className="border-t border-neutral-200"
                 aria-label="Navegación de cuenta"
               >
                 <ul>
@@ -158,12 +114,12 @@ const AccountNav = ({
                     return (
                       <li
                         key={item.href}
-                        className="border-b border-neutral-200"
+                        className="border-b border-neutral-200 last:border-b-0"
                       >
                         <LocalizedClientLink
                           href={item.href}
                           onClick={() => setMobileOpen(false)}
-                          className={`flex min-h-16 items-center justify-between border-l-4 px-6 transition-colors ${
+                          className={`flex min-h-14 items-center justify-between border-l-4 px-5 transition-colors ${
                             active
                               ? "border-[var(--color-rose)] bg-neutral-50 text-black"
                               : "border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-black"
@@ -171,7 +127,7 @@ const AccountNav = ({
                           data-testid={`mobile-${item.testId}`}
                         >
                           <div className="flex items-center gap-4">
-                            <span className="text-[10px] font-semibold tracking-[0.16em] text-neutral-400">
+                            <span className="text-[9px] font-semibold tracking-[0.16em] text-neutral-400">
                               0{index + 1}
                             </span>
 
@@ -197,28 +153,29 @@ const AccountNav = ({
                 </ul>
               </nav>
 
-              <div className="border-t border-neutral-200 p-5">
+              <div className="border-t border-neutral-200 px-5 py-3">
                 <LocalizedClientLink
                   href="/ayuda"
                   onClick={() => setMobileOpen(false)}
-                  className="flex min-h-12 items-center text-sm font-medium text-neutral-600 transition-colors hover:text-[var(--color-rose-dark)]"
+                  className="flex min-h-11 items-center justify-between text-sm font-medium text-neutral-600 transition-colors hover:text-[var(--color-rose-dark)]"
                 >
                   Centro de ayuda
+                  <span aria-hidden="true">→</span>
                 </LocalizedClientLink>
 
                 <button
                   type="button"
                   onClick={handleLogout}
                   data-testid="mobile-logout-button"
-                  className="mt-2 flex min-h-12 w-full items-center justify-between border-t border-neutral-200 pt-3 text-left text-sm font-semibold text-black transition-colors hover:text-[var(--color-rose-dark)]"
+                  className="flex min-h-11 w-full items-center justify-between border-t border-neutral-200 text-left text-sm font-semibold text-black transition-colors hover:text-[var(--color-rose-dark)]"
                 >
                   {esCl.account.signOut}
                   <span aria-hidden="true">→</span>
                 </button>
               </div>
-            </aside>
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* DESKTOP */}
