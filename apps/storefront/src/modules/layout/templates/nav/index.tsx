@@ -142,7 +142,7 @@ export default async function Nav() {
             <div className="flex items-center justify-end gap-4 sm:gap-7 lg:gap-9">
               <LocalizedClientLink
                 href="/account"
-                className="hidden items-center gap-3 text-xs font-medium text-current transition-opacity hover:opacity-70 sm:flex"
+                className="flex items-center gap-3 text-xs font-medium text-current transition-opacity hover:opacity-70"
                 data-testid="nav-account-link"
               >
                 <AccountIcon />
