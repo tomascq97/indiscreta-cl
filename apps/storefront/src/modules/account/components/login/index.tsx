@@ -4,6 +4,7 @@ import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useActionState } from "react"
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
@@ -47,6 +48,13 @@ const Login = ({ setCurrentView }: Props) => {
             required
             data-testid="password-input"
           />
+          <LocalizedClientLink
+            href="/account/forgot-password"
+            className="self-end text-small-regular underline underline-offset-4"
+            data-testid="forgot-password-link"
+          >
+            ¿Olvidaste tu contraseña?
+          </LocalizedClientLink>
         </div>
         <ErrorMessage
           error={message?.state === "error" ? message.error : null}

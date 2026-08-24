@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { Resend, type CreateEmailOptions } from "resend";
 
 import { emailVerificationEmail } from "./emails/email-verification";
+import { passwordResetEmail } from "./emails/password-reset";
 
 type ResendOptions = {
   api_key: string;
@@ -23,6 +24,7 @@ type InjectedDependencies = {
 
 enum Templates {
   EMAIL_VERIFICATION = "email-verification",
+  PASSWORD_RESET = "password-reset",
 }
 
 const templates: Record<
@@ -30,6 +32,7 @@ const templates: Record<
   (props: Record<string, unknown>) => ReactNode
 > = {
   [Templates.EMAIL_VERIFICATION]: emailVerificationEmail,
+  [Templates.PASSWORD_RESET]: passwordResetEmail,
 };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -71,6 +74,8 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
     switch (template) {
       case Templates.EMAIL_VERIFICATION:
         return "Verifica tu correo electrónico | Indiscreta";
+      case Templates.PASSWORD_RESET:
+        return "Restablece tu contraseña | Indiscreta";
       default:
         return "Notificación de Indiscreta";
     }
@@ -98,10 +103,7 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
     const { data, error } = await this.resendClient.emails.send(emailOptions);
 
     if (error || !data) {
-      this.logger.error(
-        "No fue posible enviar el correo de verificación.",
-        error,
-      );
+      this.logger.error("No fue posible enviar la notificación por correo.");
       return {};
     }
 
