@@ -25,6 +25,20 @@ export type CustomerAuthState =
   | { state: "success" }
   | null
 
+export type PasswordResetRequestState =
+  | { state: "error"; error: string }
+  | { state: "success" }
+  | null
+
+export type PasswordResetUpdateState =
+  | { state: "error"; error: string }
+  | { state: "success" }
+  | null
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const invalidResetLinkMessage =
+  "Este enlace no es válido o ha expirado. Solicita uno nuevo."
+
 // Requests a verification email for the given customer. The request must be
 // authenticated with a token tied to the auth identity (the token returned by
 // register or by a login that requires verification).
@@ -132,6 +146,67 @@ export async function login(
   const password = formData.get("password") as string
 
   return completeLogin(email, password)
+}
+
+export async function requestPasswordReset(
+  _currentState: unknown,
+  formData: FormData,
+): Promise<PasswordResetRequestState> {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase()
+
+  if (!emailPattern.test(email)) {
+    return { state: "error", error: "Ingresa un correo electrónico válido." }
+  }
+
+  try {
+    await sdk.auth.resetPassword("customer", "emailpass", {
+      identifier: email,
+    })
+  } catch {
+    // Keep the public response indistinguishable. Medusa also returns 201 for
+    // unknown identities, and transient failures must not become an oracle.
+  }
+
+  return { state: "success" }
+}
+
+export async function updatePassword(
+  _currentState: unknown,
+  formData: FormData,
+): Promise<PasswordResetUpdateState> {
+  const token = String(formData.get("token") ?? "")
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase()
+  const password = String(formData.get("password") ?? "")
+  const confirmation = String(formData.get("password_confirmation") ?? "")
+
+  if (!token || !emailPattern.test(email)) {
+    return { state: "error", error: invalidResetLinkMessage }
+  }
+
+  if (!password) {
+    return { state: "error", error: "Ingresa una nueva contraseña." }
+  }
+
+  if (password !== confirmation) {
+    return { state: "error", error: "Las contraseñas no coinciden." }
+  }
+
+  try {
+    await sdk.auth.updateProvider(
+      "customer",
+      "emailpass",
+      { email, password },
+      token,
+    )
+  } catch {
+    return { state: "error", error: invalidResetLinkMessage }
+  }
+
+  return { state: "success" }
 }
 
 // Logs the customer in and reconciles the customer record. The behavior is
