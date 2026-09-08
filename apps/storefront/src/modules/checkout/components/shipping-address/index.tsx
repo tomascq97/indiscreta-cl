@@ -227,7 +227,6 @@ const ShippingAddress = ({
             value={formData.customer_rut}
             onChange={handleChange}
             maxLength={12}
-            pattern="[0-9]{1,2}\\.[0-9]{3}\\.[0-9]{3}-[0-9Kk]"
             title="Ingresa un RUT válido, por ejemplo 12.345.678-5"
             required
             data-testid="customer-rut-input"
