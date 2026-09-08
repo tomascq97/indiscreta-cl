@@ -1,4 +1,5 @@
 import passwordResetHandler, {
+  buildAdminPasswordResetUrl,
   buildCustomerPasswordResetUrl,
   config,
 } from "../send-password-reset";
@@ -22,6 +23,19 @@ describe("password reset subscriber", () => {
 
   it("subscribes to auth.password_reset", () => {
     expect(config).toEqual({ event: "auth.password_reset" });
+  });
+
+  it("builds an admin URL in the Medusa dashboard", () => {
+    expect(
+      buildAdminPasswordResetUrl(
+        "https://backend.example.com",
+        "/app",
+        "admin@example.com",
+        "secret-reset-token",
+      ),
+    ).toBe(
+      "https://backend.example.com/app/reset-password?token=secret-reset-token&email=admin%40example.com",
+    );
   });
 
   it("rejects a localhost reset URL in production", () => {
@@ -68,8 +82,20 @@ describe("password reset subscriber", () => {
     });
   });
 
-  it("ignores non-customer actors", async () => {
-    const container = { resolve: jest.fn() };
+  it("sends an admin reset link to the Medusa dashboard", async () => {
+    const createNotifications = jest.fn().mockResolvedValue(undefined);
+    const container = {
+      resolve: jest.fn((key: string) =>
+        key === "configModule"
+          ? {
+              admin: {
+                backendUrl: "https://backend.example.com",
+                path: "/app",
+              },
+            }
+          : { createNotifications },
+      ),
+    };
     await passwordResetHandler({
       event: {
         name: "auth.password_reset",
@@ -81,6 +107,14 @@ describe("password reset subscriber", () => {
       },
       container,
     } as never);
-    expect(container.resolve).not.toHaveBeenCalled();
+    expect(createNotifications).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "admin@example.com",
+        data: {
+          reset_url:
+            "https://backend.example.com/app/reset-password?token=token&email=admin%40example.com",
+        },
+      }),
+    );
   });
 });

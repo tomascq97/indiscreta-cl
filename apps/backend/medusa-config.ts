@@ -8,6 +8,9 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
 const environment = validateBackendEnvironment(process.env);
 const fileModule = buildFileModule(environment.S3);
+const backendUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : "http://localhost:9000";
 
 module.exports = defineConfig({
   projectConfig: {
@@ -31,6 +34,8 @@ module.exports = defineConfig({
   },
   admin: {
     storefrontUrl: process.env.STOREFRONT_URL || "http://localhost:8000/cl",
+    backendUrl,
+    path: "/app",
   },
   modules: [
     ...buildRedisModules(environment.REDIS_URL),

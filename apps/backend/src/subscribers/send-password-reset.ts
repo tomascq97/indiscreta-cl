@@ -40,33 +40,60 @@ export function buildCustomerPasswordResetUrl(
   return resetUrl.toString();
 }
 
+export function buildAdminPasswordResetUrl(
+  backendUrl: string,
+  adminPath: string,
+  email: string,
+  token: string,
+) {
+  const resetUrl = new URL(
+    `${backendUrl.replace(/\/$/, "")}/${adminPath.replace(/^\//, "").replace(/\/$/, "")}/reset-password`,
+  );
+  resetUrl.searchParams.set("token", token);
+  resetUrl.searchParams.set("email", email);
+  return resetUrl.toString();
+}
+
 export default async function passwordResetHandler({
   event: {
     data: { entity_id: email, token, actor_type: actorType },
   },
   container,
 }: SubscriberArgs<PasswordResetData>) {
-  if (actorType !== "customer") {
+  if (actorType !== "customer" && actorType !== "user") {
     return;
   }
 
   const notificationModuleService = container.resolve(Modules.NOTIFICATION);
   const config = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE);
-  const storefrontUrl = config.admin.storefrontUrl;
+  const urlPrefix =
+    actorType === "user"
+      ? config.admin.backendUrl
+      : config.admin.storefrontUrl;
 
-  if (!storefrontUrl) {
+  if (!urlPrefix) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
-      "A trusted storefront URL is required for password reset.",
+      "A trusted URL is required for password reset.",
     );
   }
+
+  const resetUrl =
+    actorType === "user"
+      ? buildAdminPasswordResetUrl(
+          urlPrefix,
+          config.admin.path || "/app",
+          email,
+          token,
+        )
+      : buildCustomerPasswordResetUrl(urlPrefix, email, token);
 
   await notificationModuleService.createNotifications({
     to: email,
     channel: "email",
     template: "password-reset",
     data: {
-      reset_url: buildCustomerPasswordResetUrl(storefrontUrl, email, token),
+      reset_url: resetUrl,
     },
   });
 }
