@@ -6,6 +6,8 @@ import { mapKeys } from "lodash"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
+import NativeSelect from "@modules/common/components/native-select"
+import { listShipitCommunes, type ShipitCommuneOption } from "@lib/data/shipit"
 
 const ShippingAddress = ({
   customer,
@@ -30,6 +32,33 @@ const ShippingAddress = ({
     "shipping_address.phone": cart?.shipping_address?.phone || "",
     email: cart?.email || "",
   })
+  const [communes, setCommunes] = useState<ShipitCommuneOption[]>([])
+  const [communesUnavailable, setCommunesUnavailable] = useState(false)
+  const shippingCountryCode = formData["shipping_address.country_code"]
+
+  useEffect(() => {
+    let cancelled = false
+    if (shippingCountryCode.toLowerCase() !== "cl") {
+      setCommunes([])
+      return
+    }
+    listShipitCommunes()
+      .then((options) => {
+        if (!cancelled) {
+          setCommunes(options)
+          setCommunesUnavailable(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCommunes([])
+          setCommunesUnavailable(true)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [shippingCountryCode])
 
   const countriesInRegion = useMemo(
     () => cart?.region?.countries?.map((country) => country.iso_2),
@@ -196,15 +225,34 @@ const ShippingAddress = ({
             data-testid="shipping-postal-code-input"
           />
 
-          <Input
-            label="Comuna"
-            name="shipping_address.city"
-            autoComplete="address-level2"
-            value={formData["shipping_address.city"]}
-            onChange={handleChange}
-            required
-            data-testid="shipping-city-input"
-          />
+          {communes.length ? (
+            <NativeSelect
+              placeholder="Selecciona tu comuna"
+              name="shipping_address.city"
+              autoComplete="address-level2"
+              value={formData["shipping_address.city"]}
+              onChange={handleChange}
+              required
+              data-testid="shipping-city-input"
+            >
+              {communes.map((commune) => (
+                <option key={commune.id} value={commune.name}>
+                  {commune.name} · {commune.region}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : (
+            <Input
+              label="Comuna"
+              name="shipping_address.city"
+              autoComplete="address-level2"
+              value={formData["shipping_address.city"]}
+              onChange={handleChange}
+              required
+              disabled={!communesUnavailable}
+              data-testid="shipping-city-input"
+            />
+          )}
 
           <CountrySelect
             name="shipping_address.country_code"

@@ -55,6 +55,87 @@ describe("validateBackendEnvironment", () => {
     expect(validateBackendEnvironment(validEnvironment).WEBPAY).toBeUndefined();
   });
 
+  it("keeps Shipit disabled by default", () => {
+    expect(validateBackendEnvironment(validEnvironment).SHIPIT).toBeUndefined();
+  });
+
+  it("accepts an enabled read-only Shipit configuration", () => {
+    expect(
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: "https://api.shipit.cl",
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "true",
+      }).SHIPIT,
+    ).toMatchObject({
+      enabled: true,
+      shipmentCreationEnabled: false,
+      sandbox: true,
+      timeoutMs: 5000,
+      readMaxRetries: 1,
+      originCommuneId: 308,
+      ratesAreNet: true,
+    });
+  });
+
+  it("rejects Shipit shipment creation while Shipit is disabled", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_SHIPMENT_CREATION_ENABLED: "true",
+      }),
+    ).toThrow("requires SHIPIT_ENABLED=true");
+  });
+
+  it("rejects live Shipit shipment creation outside production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_SHIPMENT_CREATION_ENABLED: "true",
+        SHIPIT_SANDBOX: "false",
+      }),
+    ).toThrow("requires NODE_ENV=production");
+  });
+
+  it("rejects non-official Shipit hosts without echoing the URL", () => {
+    const privateUrl = "https://private.invalid/secret";
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: privateUrl,
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "true",
+      }),
+    ).toThrow("SHIPIT_API_BASE_URL must use its official Shipit HTTPS host");
+  });
+
+  it("requires Shipit rates to be declared as net", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: "https://api.shipit.cl",
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "false",
+      }),
+    ).toThrow("SHIPIT_RATES_ARE_NET must be true");
+  });
+
   it("accepts a complete Webpay integration configuration", () => {
     expect(
       validateBackendEnvironment({

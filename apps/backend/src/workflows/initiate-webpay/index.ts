@@ -12,6 +12,7 @@ import { createWebpayTransaction } from "../../lib/webpay-client";
 import { WEBPAY_MODULE } from "../../modules/webpay";
 import type WebpayModuleService from "../../modules/webpay/service";
 import { initiateWebpayOperation, type InitiateWebpayInput } from "./operation";
+import { validateShipitCheckoutBeforeWebpay } from "../validate-shipit-checkout";
 
 const initiateWebpayStep = createStep(
   "initiate-webpay",
@@ -23,6 +24,8 @@ const initiateWebpayStep = createStep(
     const paymentService = container.resolve<IPaymentModuleService>(
       Modules.PAYMENT,
     );
+
+    await validateShipitCheckoutBeforeWebpay(container as never, input.cart_id);
 
     const result = await initiateWebpayOperation(
       {

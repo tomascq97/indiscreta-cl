@@ -18,6 +18,21 @@ type ShippingProps = {
   cart: HttpTypes.StoreCart
   availableShippingMethods: HttpTypes.StoreCartShippingOption[] | null
 }
+type CalculatedShippingOption = HttpTypes.StoreCartShippingOption & {
+  data?: {
+    selection_policy?: string
+    destination_kind?: string
+  } | null
+}
+
+function isShipitOption(option: HttpTypes.StoreCartShippingOption) {
+  const data = (option as CalculatedShippingOption).data
+  return (
+    option.price_type === "calculated" &&
+    data?.selection_policy === "cheapest-v1" &&
+    data?.destination_kind === "home_delivery"
+  )
+}
 function formatAddress(address: HttpTypes.StoreCartAddress) {
   if (!address) {
     return ""
@@ -107,6 +122,16 @@ const Shipping: React.FC<ShippingProps> = ({
               }
             })
           setCalculatedPricesMap(pricesMap)
+          const shipitFailed = (_shippingMethods ?? []).some(
+            (option) =>
+              isShipitOption(option) &&
+              typeof pricesMap[option.id] !== "number",
+          )
+          setError(
+            shipitFailed
+              ? "No pudimos calcular el despacho para esta comuna. Revisa la dirección o inténtalo nuevamente."
+              : null,
+          )
           setIsLoadingPrices(false)
         }
       })
@@ -128,6 +153,18 @@ const Shipping: React.FC<ShippingProps> = ({
     router.push(pathname + "?step=delivery", { scroll: false })
   }
   const handleSubmit = () => {
+    const selectedOption = (_shippingMethods ?? []).find(
+      (option) => option.id === shippingMethodId,
+    )
+    if (
+      selectedOption?.price_type === "calculated" &&
+      typeof calculatedPricesMap[selectedOption.id] !== "number"
+    ) {
+      setError(
+        "Debes obtener una tarifa de despacho válida antes de continuar.",
+      )
+      return
+    }
     sessionStorage.removeItem("indiscreta-checkout-terms")
 
     router.push(pathname + "?step=review", {
@@ -280,6 +317,11 @@ const Shipping: React.FC<ShippingProps> = ({
                           />
                           <span className="text-base-regular">
                             {option.name}
+                            {isShipitOption(option) && (
+                              <span className="block text-small-regular text-ui-fg-muted">
+                                Tarifa más económica · IVA incluido
+                              </span>
+                            )}
                           </span>
                         </div>
                         <span className="justify-self-end text-ui-fg-base">

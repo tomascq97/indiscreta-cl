@@ -38,6 +38,24 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/webpay",
     },
+    {
+      resolve: "./src/modules/shipit",
+    },
+    ...(environment.SHIPIT
+      ? [
+          {
+            resolve: "@medusajs/medusa/fulfillment",
+            options: {
+              providers: [
+                {
+                  resolve: "./src/modules/shipit-fulfillment",
+                  id: "shipit",
+                },
+              ],
+            },
+          },
+        ]
+      : []),
     ...(environment.WEBPAY
       ? [
           {

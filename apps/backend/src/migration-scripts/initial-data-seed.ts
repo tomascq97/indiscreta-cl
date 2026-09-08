@@ -22,6 +22,7 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
+import { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../modules/shipit-fulfillment/service";
 
 export default async function initial_data_seed({
   container,
@@ -150,6 +151,17 @@ export default async function initial_data_seed({
     },
   });
 
+  if (process.env.SHIPIT_ENABLED === "true") {
+    await link.create({
+      [Modules.STOCK_LOCATION]: {
+        stock_location_id: stockLocation.id,
+      },
+      [Modules.FULFILLMENT]: {
+        fulfillment_provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      },
+    });
+  }
+
   logger.info("Seeding fulfillment data...");
   // This is created by a migration script in core.
   const { data: shippingProfileResult } = await query.graph({
@@ -253,6 +265,39 @@ export default async function initial_data_seed({
           },
         ],
       },
+      ...(process.env.SHIPIT_ENABLED === "true"
+        ? [
+            {
+              name: "Shipit domicilio económico",
+              price_type: "calculated" as const,
+              provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+              service_zone_id: fulfillmentSet.service_zones[0].id,
+              shipping_profile_id: shippingProfile.id,
+              data: {
+                id: "shipit-home-economy",
+                destination_kind: "home_delivery",
+                selection_policy: "cheapest-v1",
+              },
+              type: {
+                label: "Shipit domicilio",
+                description: "Despacho a domicilio mediante Shipit.",
+                code: "shipit-home-economy",
+              },
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq" as const,
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq" as const,
+                },
+              ],
+            },
+          ]
+        : []),
     ],
   });
   logger.info("Finished seeding fulfillment data.");

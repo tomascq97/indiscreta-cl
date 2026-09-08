@@ -47,7 +47,190 @@ export type BackendEnvironment = Record<
   REDIS_URL?: string;
   S3?: S3FileConfiguration;
   WEBPAY?: WebpayConfiguration;
+  SHIPIT?: ShipitConfiguration;
 };
+
+export type ShipitConfiguration = {
+  enabled: boolean;
+  shipmentCreationEnabled: boolean;
+  sandbox: boolean;
+  apiBaseUrl: string;
+  pricesBaseUrl: string;
+  trackingBaseUrl: string;
+  email: string;
+  accessToken: string;
+  webhookToken?: string;
+  timeoutMs: number;
+  readMaxRetries: number;
+  originCommuneId: number;
+  quoteMaxAgeSeconds: number;
+  catalogCacheTtlSeconds: number;
+  ratesAreNet: true;
+};
+
+const shipitHosts = {
+  SHIPIT_API_BASE_URL: "api.shipit.cl",
+  SHIPIT_PRICES_BASE_URL: "prices.shipit.cl",
+  SHIPIT_TRACKING_BASE_URL: "courierstatus.shipit.cl",
+} as const;
+
+function parseBoolean(name: string, value?: string): boolean {
+  const normalized = value?.trim() || "false";
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    `${name} must be true or false`,
+  );
+}
+
+function validateShipitBaseUrl(name: keyof typeof shipitHosts, value: string) {
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol === "https:" &&
+      url.hostname === shipitHosts[name] &&
+      url.username === "" &&
+      url.password === "" &&
+      url.search === "" &&
+      url.hash === ""
+    ) {
+      return url.origin;
+    }
+  } catch {
+    // The error below intentionally excludes the supplied value.
+  }
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    `${name} must use its official Shipit HTTPS host`,
+  );
+}
+
+function parseBoundedInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  const parsed = value?.trim() ? Number(value) : fallback;
+  if (Number.isSafeInteger(parsed) && parsed >= min && parsed <= max) {
+    return parsed;
+  }
+  throw new MedusaError(
+    MedusaError.Types.INVALID_DATA,
+    `${name} must be an integer between ${min} and ${max}`,
+  );
+}
+
+function validateShipitEnvironment(
+  environment: NodeJS.ProcessEnv,
+): ShipitConfiguration | undefined {
+  const enabled = parseBoolean("SHIPIT_ENABLED", environment.SHIPIT_ENABLED);
+  const shipmentCreationEnabled = parseBoolean(
+    "SHIPIT_SHIPMENT_CREATION_ENABLED",
+    environment.SHIPIT_SHIPMENT_CREATION_ENABLED,
+  );
+  const sandbox = parseBoolean(
+    "SHIPIT_SANDBOX",
+    environment.SHIPIT_SANDBOX ?? "true",
+  );
+  if (shipmentCreationEnabled && !enabled) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "SHIPIT_SHIPMENT_CREATION_ENABLED requires SHIPIT_ENABLED=true",
+    );
+  }
+  if (
+    shipmentCreationEnabled &&
+    !sandbox &&
+    environment.NODE_ENV !== "production"
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "SHIPIT_SANDBOX=false with shipment creation requires NODE_ENV=production",
+    );
+  }
+  if (!enabled) return undefined;
+
+  if (environment.SHIPIT_RATES_ARE_NET?.trim() !== "true") {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      "SHIPIT_RATES_ARE_NET must be true when Shipit is enabled",
+    );
+  }
+
+  const required = [
+    "SHIPIT_EMAIL",
+    "SHIPIT_ACCESS_TOKEN",
+    "SHIPIT_ORIGIN_COMMUNE_ID",
+    ...Object.keys(shipitHosts),
+  ] as const;
+  const missing = required.filter((name) => !environment[name]?.trim());
+  if (missing.length) {
+    throw new MedusaError(
+      MedusaError.Types.INVALID_DATA,
+      `Missing required Shipit environment variables: ${missing.join(", ")}`,
+    );
+  }
+
+  return {
+    enabled,
+    shipmentCreationEnabled,
+    sandbox,
+    apiBaseUrl: validateShipitBaseUrl(
+      "SHIPIT_API_BASE_URL",
+      environment.SHIPIT_API_BASE_URL!,
+    ),
+    pricesBaseUrl: validateShipitBaseUrl(
+      "SHIPIT_PRICES_BASE_URL",
+      environment.SHIPIT_PRICES_BASE_URL!,
+    ),
+    trackingBaseUrl: validateShipitBaseUrl(
+      "SHIPIT_TRACKING_BASE_URL",
+      environment.SHIPIT_TRACKING_BASE_URL!,
+    ),
+    email: environment.SHIPIT_EMAIL!.trim(),
+    accessToken: environment.SHIPIT_ACCESS_TOKEN!.trim(),
+    webhookToken: environment.SHIPIT_WEBHOOK_TOKEN?.trim() || undefined,
+    timeoutMs: parseBoundedInteger(
+      "SHIPIT_TIMEOUT_MS",
+      environment.SHIPIT_TIMEOUT_MS,
+      5_000,
+      500,
+      30_000,
+    ),
+    readMaxRetries: parseBoundedInteger(
+      "SHIPIT_READ_MAX_RETRIES",
+      environment.SHIPIT_READ_MAX_RETRIES,
+      1,
+      0,
+      3,
+    ),
+    originCommuneId: parseBoundedInteger(
+      "SHIPIT_ORIGIN_COMMUNE_ID",
+      environment.SHIPIT_ORIGIN_COMMUNE_ID,
+      0,
+      1,
+      100_000,
+    ),
+    quoteMaxAgeSeconds: parseBoundedInteger(
+      "SHIPIT_QUOTE_MAX_AGE_SECONDS",
+      environment.SHIPIT_QUOTE_MAX_AGE_SECONDS,
+      900,
+      60,
+      86_400,
+    ),
+    catalogCacheTtlSeconds: parseBoundedInteger(
+      "SHIPIT_CATALOG_CACHE_TTL_SECONDS",
+      environment.SHIPIT_CATALOG_CACHE_TTL_SECONDS,
+      21_600,
+      60,
+      86_400,
+    ),
+    ratesAreNet: true,
+  };
+}
 
 export const webpayEnvironments = ["integration", "production"] as const;
 
@@ -301,6 +484,7 @@ export function validateBackendEnvironment(
     environment,
     isProduction,
   );
+  const shipitConfiguration = validateShipitEnvironment(environment);
 
   const requiredEnvironment = Object.fromEntries(
     requiredBackendEnvironmentVariables.map((name) => [
@@ -315,6 +499,7 @@ export function validateBackendEnvironment(
     ...(redisUrl ? { REDIS_URL: redisUrl } : {}),
     ...(s3Configuration ? { S3: s3Configuration } : {}),
     ...(webpayConfiguration ? { WEBPAY: webpayConfiguration } : {}),
+    ...(shipitConfiguration ? { SHIPIT: shipitConfiguration } : {}),
   };
 }
 
