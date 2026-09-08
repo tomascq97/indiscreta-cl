@@ -8,9 +8,11 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
 const environment = validateBackendEnvironment(process.env);
 const fileModule = buildFileModule(environment.S3);
-const backendUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-  : "http://localhost:9000";
+const backendUrl =
+  process.env.MEDUSA_BACKEND_URL ??
+  (process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : "http://localhost:9000");
 
 module.exports = defineConfig({
   projectConfig: {
