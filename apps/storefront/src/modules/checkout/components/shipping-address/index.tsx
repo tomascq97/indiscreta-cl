@@ -5,7 +5,6 @@ import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
-import CountrySelect from "../country-select"
 import NativeSelect from "@modules/common/components/native-select"
 import { listShipitCommunes, type ShipitCommuneOption } from "@lib/data/shipit"
 
@@ -25,23 +24,17 @@ const ShippingAddress = ({
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
     "shipping_address.company": cart?.shipping_address?.company || "",
-    "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
+    "shipping_address.postal_code": "",
     "shipping_address.city": cart?.shipping_address?.city || "",
-    "shipping_address.country_code": cart?.shipping_address?.country_code || "",
+    "shipping_address.country_code": "cl",
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
     email: cart?.email || "",
   })
   const [communes, setCommunes] = useState<ShipitCommuneOption[]>([])
   const [communesUnavailable, setCommunesUnavailable] = useState(false)
-  const shippingCountryCode = formData["shipping_address.country_code"]
-
   useEffect(() => {
     let cancelled = false
-    if (shippingCountryCode.toLowerCase() !== "cl") {
-      setCommunes([])
-      return
-    }
     listShipitCommunes()
       .then((options) => {
         if (!cancelled) {
@@ -58,7 +51,34 @@ const ShippingAddress = ({
     return () => {
       cancelled = true
     }
-  }, [shippingCountryCode])
+  }, [])
+
+  const regions = useMemo(
+    () =>
+      Array.from(new Set(communes.map((commune) => commune.region))).sort(
+        (left, right) => left.localeCompare(right, "es"),
+      ),
+    [communes],
+  )
+
+  const selectedRegion = formData["shipping_address.province"]
+  const communesInRegion = useMemo(
+    () => communes.filter((commune) => commune.region === selectedRegion),
+    [communes, selectedRegion],
+  )
+
+  useEffect(() => {
+    if (!communes.length) return
+    const selectedCommune = communes.find(
+      (commune) => commune.name === formData["shipping_address.city"],
+    )
+    if (selectedCommune && selectedCommune.region !== selectedRegion) {
+      setFormData((current) => ({
+        ...current,
+        "shipping_address.province": selectedCommune.region,
+      }))
+    }
+  }, [communes, formData, selectedRegion])
 
   const countriesInRegion = useMemo(
     () => cart?.region?.countries?.map((country) => country.iso_2),
@@ -84,9 +104,9 @@ const ShippingAddress = ({
           "shipping_address.last_name": address.last_name || "",
           "shipping_address.address_1": address.address_1 || "",
           "shipping_address.company": address.company || "",
-          "shipping_address.postal_code": address.postal_code || "",
+          "shipping_address.postal_code": "",
           "shipping_address.city": address.city || "",
-          "shipping_address.country_code": address.country_code || "",
+          "shipping_address.country_code": "cl",
           "shipping_address.province": address.province || "",
           "shipping_address.phone": address.phone || "",
         }))
@@ -115,10 +135,18 @@ const ShippingAddress = ({
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
-    setFormData((current) => ({
-      ...current,
-      [event.target.name]: event.target.value,
-    }))
+    const { name, value } = event.target
+    setFormData((current) => {
+      if (name === "shipping_address.province") {
+        return {
+          ...current,
+          [name]: value,
+          "shipping_address.city": "",
+          "shipping_address.postal_code": "",
+        }
+      }
+      return { ...current, [name]: value }
+    })
   }
 
   return (
@@ -215,17 +243,26 @@ const ShippingAddress = ({
             data-testid="shipping-company-input"
           />
 
-          <Input
-            label="Código postal"
-            name="shipping_address.postal_code"
-            autoComplete="postal-code"
-            value={formData["shipping_address.postal_code"]}
+          <input type="hidden" name="shipping_address.postal_code" value="" />
+
+          <NativeSelect
+            placeholder="Selecciona tu región"
+            name="shipping_address.province"
+            autoComplete="address-level1"
+            value={selectedRegion}
             onChange={handleChange}
             required
-            data-testid="shipping-postal-code-input"
-          />
+            disabled={!regions.length}
+            data-testid="shipping-province-input"
+          >
+            {regions.map((region) => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </NativeSelect>
 
-          {communes.length ? (
+          {communesInRegion.length ? (
             <NativeSelect
               placeholder="Selecciona tu comuna"
               name="shipping_address.city"
@@ -233,11 +270,12 @@ const ShippingAddress = ({
               value={formData["shipping_address.city"]}
               onChange={handleChange}
               required
+              disabled={!selectedRegion}
               data-testid="shipping-city-input"
             >
-              {communes.map((commune) => (
+              {communesInRegion.map((commune) => (
                 <option key={commune.id} value={commune.name}>
-                  {commune.name} · {commune.region}
+                  {commune.name}
                 </option>
               ))}
             </NativeSelect>
@@ -254,24 +292,17 @@ const ShippingAddress = ({
             />
           )}
 
-          <CountrySelect
-            name="shipping_address.country_code"
-            autoComplete="country"
-            region={cart?.region}
-            value={formData["shipping_address.country_code"]}
-            onChange={handleChange}
-            placeholder="País"
-            required
-            data-testid="shipping-country-select"
-          />
-
           <Input
-            label="Región"
-            name="shipping_address.province"
-            autoComplete="address-level1"
-            value={formData["shipping_address.province"]}
-            onChange={handleChange}
-            data-testid="shipping-province-input"
+            label="País"
+            name="shipping_address.country_display"
+            value="Chile"
+            disabled
+            data-testid="shipping-country-input"
+          />
+          <input
+            type="hidden"
+            name="shipping_address.country_code"
+            value="cl"
           />
         </div>
       </section>

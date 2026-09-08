@@ -114,7 +114,6 @@ const Addresses = ({
                   {cart.shipping_address.address_1}{" "}
                   {cart.shipping_address.address_2}
                   <br />
-                  {cart.shipping_address.postal_code},{" "}
                   {cart.shipping_address.city}
                   <br />
                   {cart.shipping_address.country_code?.toUpperCase()}

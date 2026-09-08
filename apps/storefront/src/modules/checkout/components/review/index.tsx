@@ -106,7 +106,7 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
               ? `, ${cart.shipping_address.address_2}`
               : ""}
             <br />
-            {cart.shipping_address?.postal_code}, {cart.shipping_address?.city}
+            {cart.shipping_address?.city}
             <br />
             {cart.shipping_address?.province
               ? `${cart.shipping_address.province}, `
