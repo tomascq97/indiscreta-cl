@@ -16,6 +16,7 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { getCheckoutAddressPayload } from "@lib/util/checkout-rules"
+import { formatChileanRut, isValidChileanRut } from "@lib/util/chilean-rut"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -25,7 +26,7 @@ import { getCheckoutAddressPayload } from "@lib/util/checkout-rules"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *metadata, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
 
   if (!id) {
     return null
@@ -345,7 +346,15 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       throw new Error("No existing cart found when setting addresses")
     }
 
-    await updateCart(getCheckoutAddressPayload(formData))
+    const rut = String(formData.get("customer_rut") ?? "")
+    if (!isValidChileanRut(rut)) {
+      throw new Error("Ingresa un RUT chileno válido")
+    }
+
+    await updateCart({
+      ...getCheckoutAddressPayload(formData),
+      metadata: { customer_rut: formatChileanRut(rut) },
+    })
   } catch (error: unknown) {
     return error instanceof Error ? error.message : String(error)
   }

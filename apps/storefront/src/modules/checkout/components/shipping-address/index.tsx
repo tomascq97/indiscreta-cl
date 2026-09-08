@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import NativeSelect from "@modules/common/components/native-select"
 import { listShipitCommunes, type ShipitCommuneOption } from "@lib/data/shipit"
+import { formatChileanRut } from "@lib/util/chilean-rut"
 
 const ShippingAddress = ({
   customer,
@@ -29,6 +30,10 @@ const ShippingAddress = ({
     "shipping_address.country_code": "cl",
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
+    customer_rut:
+      typeof cart?.metadata?.customer_rut === "string"
+        ? cart.metadata.customer_rut
+        : "",
     email: cart?.email || "",
   })
   const [communes, setCommunes] = useState<ShipitCommuneOption[]>([])
@@ -145,6 +150,9 @@ const ShippingAddress = ({
           "shipping_address.postal_code": "",
         }
       }
+      if (name === "customer_rut") {
+        return { ...current, customer_rut: formatChileanRut(value) }
+      }
       return { ...current, [name]: value }
     })
   }
@@ -202,13 +210,27 @@ const ShippingAddress = ({
           />
 
           <Input
-            label="Apellido"
+            label="Apellidos"
             name="shipping_address.last_name"
             autoComplete="family-name"
             value={formData["shipping_address.last_name"]}
             onChange={handleChange}
             required
             data-testid="shipping-last-name-input"
+          />
+
+          <Input
+            label="RUT"
+            name="customer_rut"
+            inputMode="text"
+            autoComplete="off"
+            value={formData.customer_rut}
+            onChange={handleChange}
+            maxLength={12}
+            pattern="[0-9]{1,2}\\.[0-9]{3}\\.[0-9]{3}-[0-9Kk]"
+            title="Ingresa un RUT válido, por ejemplo 12.345.678-5"
+            required
+            data-testid="customer-rut-input"
           />
         </div>
       </section>
