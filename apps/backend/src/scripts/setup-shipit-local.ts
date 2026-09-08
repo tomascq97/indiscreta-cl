@@ -13,16 +13,21 @@ import {
 
 function assertSafeEnvironment() {
   const database = new URL(process.env.DATABASE_URL ?? "")
+  const isLocalDatabase = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(
+    database.hostname,
+  )
+  const isExplicitSandboxSetup =
+    process.env.ALLOW_SHIPIT_SANDBOX_SETUP === "true" &&
+    process.env.SHIPIT_SANDBOX === "true"
+
   if (
-    !["localhost", "127.0.0.1", "[::1]", "::1"].includes(
-      database.hostname,
-    ) ||
+    (!isLocalDatabase && !isExplicitSandboxSetup) ||
     process.env.SHIPIT_ENABLED !== "true" ||
     process.env.SHIPIT_SHIPMENT_CREATION_ENABLED !== "false"
   ) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "Shipit local setup requires a local database, enabled quotes, and disabled shipment creation",
+      "Shipit setup requires a local database or explicit sandbox authorization, enabled quotes, and disabled shipment creation",
     )
   }
 }
