@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export type ShipitQuoteHashInput = {
   cartId: string;
-  variantId: string;
+  contentsKey: string;
   quantity: number;
   packingPolicy: string;
   weightKg: number;
@@ -30,7 +30,7 @@ export function createShipitQuoteHash(input: ShipitQuoteHashInput): string {
   const canonical = {
     ...input,
     cartId: normalize(input.cartId),
-    variantId: normalize(input.variantId),
+    contentsKey: normalize(input.contentsKey),
     destinationKind: normalize(input.destinationKind),
     destinationContext: normalize(input.destinationContext),
     courier: normalize(input.courier),

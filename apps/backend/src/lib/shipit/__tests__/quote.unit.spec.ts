@@ -19,31 +19,138 @@ describe("Shipit quote foundations", () => {
     });
     expect(addChileIvaToNetClp(4001).grossPrice).toBe(4761);
   });
-  it("converts the single-item policy from grams to kilograms", () => {
+  it("keeps real dimensions for a single physical unit", () => {
     expect(
-      cartItemsToShipitParcel([
-        {
-          quantity: 1,
-          variant: {
-            id: "variant_1",
-            weight: 500,
-            length: 20,
-            width: 10,
-            height: 5,
+      cartItemsToShipitParcel(
+        [
+          {
+            quantity: 1,
+            variant: {
+              id: "variant_1",
+              weight: 500,
+              length: 20,
+              width: 10,
+              height: 5,
+            },
           },
-        },
-      ]),
-    ).toMatchObject({
+        ],
+        { sandbox: true },
+      ),
+    ).toEqual({
+      contentsKey: "variant_1:1",
       weightKg: 0.5,
       items: 1,
+      lengthCm: 20,
+      widthCm: 10,
+      heightCm: 5,
       packingPolicy: "single-item-v1",
     });
   });
 
-  it("fails closed for multi-unit carts until packing is approved", () => {
+  it("uses provisional sandbox packing for multiple physical units", () => {
+    expect(
+      cartItemsToShipitParcel(
+        [
+          {
+            quantity: 2,
+            variant: {
+              id: "variant_1",
+              weight: 500,
+              length: 20,
+              width: 10,
+              height: 5,
+            },
+          },
+        ],
+        { sandbox: true },
+      ),
+    ).toEqual({
+      contentsKey: "variant_1:2",
+      weightKg: 1,
+      items: 2,
+      lengthCm: 30,
+      widthCm: 20,
+      heightCm: 6,
+      packingPolicy: "sandbox-packing-v1",
+    });
+  });
+
+  it("aggregates multi-SKU quantities and weight deterministically", () => {
+    expect(
+      cartItemsToShipitParcel(
+        [
+          {
+            quantity: 1,
+            variant: {
+              id: "variant_b",
+              weight: 300,
+              length: 10,
+              width: 10,
+              height: 5,
+            },
+          },
+          {
+            quantity: 2,
+            variant: {
+              id: "variant_a",
+              weight: 500,
+              length: 20,
+              width: 10,
+              height: 5,
+            },
+          },
+        ],
+        { sandbox: true },
+      ),
+    ).toEqual({
+      contentsKey: "variant_a:2|variant_b:1",
+      weightKg: 1.3,
+      items: 3,
+      lengthCm: 35,
+      widthCm: 28,
+      heightCm: 10,
+      packingPolicy: "sandbox-packing-v1",
+    });
+  });
+
+  it("fails closed for multi-item production packing", () => {
     expect(() =>
-      cartItemsToShipitParcel([{ quantity: 2, variant: null }]),
-    ).toThrow("supports one physical unit only");
+      cartItemsToShipitParcel(
+        [
+          {
+            quantity: 2,
+            variant: {
+              id: "variant_1",
+              weight: 500,
+              length: 20,
+              width: 10,
+              height: 5,
+            },
+          },
+        ],
+        { sandbox: false },
+      ),
+    ).toThrow("requires an approved production packing policy");
+  });
+
+  it("fails closed above the sandbox packing limit", () => {
+    expect(() =>
+      cartItemsToShipitParcel(
+        [
+          {
+            quantity: 7,
+            variant: {
+              id: "variant_1",
+              weight: 500,
+              length: 20,
+              width: 10,
+              height: 5,
+            },
+          },
+        ],
+        { sandbox: true },
+      ),
+    ).toThrow("supports at most 6 physical units");
   });
 
   it("filters, deduplicates and sorts rates deterministically", () => {
@@ -106,7 +213,7 @@ describe("Shipit quote foundations", () => {
   it("creates stable hashes and changes them with quote inputs", () => {
     const input = {
       cartId: "cart_1",
-      variantId: "variant_1",
+      contentsKey: "variant_1:1",
       quantity: 1,
       packingPolicy: "single-item-v1",
       weightKg: 0.5,

@@ -3,6 +3,7 @@
 import { esCl } from "@lib/translations/es-cl"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
+import CartQuantityStepper from "@modules/cart/components/cart-quantity-stepper"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
@@ -268,13 +269,11 @@ const CartDropdown = ({
                         </div>
 
                         <div className="mt-3 flex items-center justify-between gap-4">
-                          <span
-                            className="text-xs text-neutral-500"
-                            data-testid="cart-item-quantity"
-                            data-value={item.quantity}
-                          >
-                            Cantidad: {item.quantity}
-                          </span>
+                          <CartQuantityStepper
+                            lineId={item.id}
+                            quantity={item.quantity}
+                            maxQuantity={10}
+                          />
 
                           <DeleteButton
                             id={item.id}

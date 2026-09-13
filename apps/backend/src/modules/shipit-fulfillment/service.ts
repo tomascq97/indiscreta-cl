@@ -146,6 +146,15 @@ class ShipitFulfillmentProviderService implements IFulfillmentProvider {
     _data: CalculateShippingOptionPriceDTO["data"],
     context: CalculateShippingOptionPriceContext,
   ) {
+    const quoteContext = context as unknown as ShipitQuoteCart;
+
+    if (Array.isArray(quoteContext.items) && quoteContext.items.length === 0) {
+      return {
+        calculated_amount: 0,
+        is_calculated_price_tax_inclusive: true as const,
+      };
+    }
+
     const result = await this.quote(context);
     return {
       calculated_amount: result.totals.grossPrice,

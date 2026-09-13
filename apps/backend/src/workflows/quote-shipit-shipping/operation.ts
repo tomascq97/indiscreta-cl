@@ -80,7 +80,10 @@ export async function calculateShipitShippingQuote(
     throw new ShipitError("INVALID_RESPONSE", "Invalid Shipit checkout cart")
   }
 
-  const parcel = cartItemsToShipitParcel(cart.items ?? [])
+  const parcel = cartItemsToShipitParcel(cart.items ?? [], {
+    sandbox: dependencies.configuration.sandbox,
+  })
+
   const communes = await dependencies.loadCommunes()
   const destination = resolveShipitCommune(address.city, communes)
   const response = await dependencies.api.rates(
@@ -99,7 +102,7 @@ export async function calculateShipitShippingQuote(
   const destinationContext = createShipitDestinationContext(address)
   const quoteHash = createShipitQuoteHash({
     cartId: cart.id,
-    variantId: parcel.variantId,
+    contentsKey: parcel.contentsKey,
     quantity: parcel.items,
     packingPolicy: parcel.packingPolicy,
     weightKg: parcel.weightKg,
