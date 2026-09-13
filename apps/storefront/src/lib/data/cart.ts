@@ -257,6 +257,71 @@ export async function initiatePaymentSession(
     .catch(medusaError)
 }
 
+const WEBPAY_PROVIDER_ID = "pp_webpay-plus_webpay"
+const WEBPAY_ACTIVE_SESSION_STATUSES = new Set([
+  "pending",
+  "requires_more",
+  "pending_authorization",
+])
+
+export async function retryWebpayPayment(countryCode: string) {
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    throw new Error("No existing cart found for Webpay retry")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const { cart } = await sdk.client.fetch<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}`,
+    {
+      method: "GET",
+      query: {
+        fields:
+          "id,*payment_collection,*payment_collection.payment_sessions",
+      },
+      headers,
+      cache: "no-store",
+    },
+  )
+
+  const activeWebpaySessions = (
+    cart.payment_collection?.payment_sessions ?? []
+  ).filter(
+    (session) =>
+      session.provider_id === WEBPAY_PROVIDER_ID &&
+      Boolean(
+        session.status &&
+          WEBPAY_ACTIVE_SESSION_STATUSES.has(session.status),
+      ),
+  )
+
+  if (activeWebpaySessions.length > 1) {
+    throw new Error(
+      "Expected at most one active Webpay payment session during retry",
+    )
+  }
+
+  if (activeWebpaySessions.length === 0) {
+    await sdk.store.payment.initiatePaymentSession(
+      cart,
+      {
+        provider_id: WEBPAY_PROVIDER_ID,
+      },
+      {},
+      headers,
+    )
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+
+  redirect(`/${countryCode}/checkout?step=payment`)
+}
+
 export async function applyPromotions(codes: string[]) {
   const cartId = await getCartId()
 

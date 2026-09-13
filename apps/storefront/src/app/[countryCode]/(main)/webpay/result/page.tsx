@@ -1,4 +1,5 @@
 import { retrieveWebpayResult } from "@lib/data/webpay-result"
+import { retryWebpayPayment } from "@lib/data/cart"
 import { convertToLocale } from "@lib/util/money"
 import { getWebpayResultView } from "@lib/util/webpay-result"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 }
 
 type Props = {
+  params: Promise<{ countryCode: string }>
   searchParams: Promise<{ webpay_result?: string }>
 }
 
@@ -25,7 +27,11 @@ function formatDate(value: string | null) {
   }).format(new Date(value))
 }
 
-export default async function WebpayResultPage({ searchParams }: Props) {
+export default async function WebpayResultPage({
+  params,
+  searchParams,
+}: Props) {
+  const { countryCode } = await params
   const { webpay_result: attemptId } = await searchParams
   const result = await retrieveWebpayResult(attemptId)
   const view = getWebpayResultView(result)
@@ -151,12 +157,14 @@ export default async function WebpayResultPage({ searchParams }: Props) {
           )}
 
           {view.canReturnToCheckout && (
-            <LocalizedClientLink
-              href="/checkout?step=payment"
-              className="inline-flex min-h-12 items-center justify-center border border-black px-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-black transition-colors hover:bg-black hover:text-white"
-            >
-              Volver al checkout
-            </LocalizedClientLink>
+            <form action={retryWebpayPayment.bind(null, countryCode)}>
+              <button
+                type="submit"
+                className="inline-flex min-h-12 items-center justify-center border border-black px-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-black transition-colors hover:bg-black hover:text-white"
+              >
+                Volver al checkout
+              </button>
+            </form>
           )}
 
           {!view.canOpenOrder && !view.canReturnToCheckout && (
