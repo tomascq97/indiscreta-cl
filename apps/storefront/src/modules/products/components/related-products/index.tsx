@@ -1,23 +1,20 @@
+import { esCl } from "@lib/translations/es-cl"
 import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
 import { HttpTypes } from "@medusajs/types"
 import Product from "../product-preview"
-
 type RelatedProductsProps = {
   product: HttpTypes.StoreProduct
   countryCode: string
 }
-
 export default async function RelatedProducts({
   product,
   countryCode,
 }: RelatedProductsProps) {
   const region = await getRegion(countryCode)
-
   if (!region) {
     return null
   }
-
   // edit this function to define your related products logic
   const queryParams: HttpTypes.StoreProductListParams = {}
   if (region?.id) {
@@ -32,28 +29,25 @@ export default async function RelatedProducts({
       .filter(Boolean) as string[]
   }
   queryParams.is_giftcard = false
-
   const products = await listProducts({
     queryParams,
     countryCode,
   }).then(({ response }) => {
     return response.products.filter(
-      (responseProduct) => responseProduct.id !== product.id
+      (responseProduct) => responseProduct.id !== product.id,
     )
   })
-
   if (!products.length) {
     return null
   }
-
   return (
     <div className="product-page-constraint">
       <div className="flex flex-col items-center text-center mb-16">
         <span className="text-base-regular text-gray-600 mb-6">
-          Related products
+          {esCl.product.relatedProducts}
         </span>
         <p className="text-2xl-regular text-ui-fg-base max-w-lg">
-          You might also want to check out these products.
+          También podrían interesarte estos productos.
         </p>
       </div>
 

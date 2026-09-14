@@ -1,18 +1,20 @@
+import { esCl } from "@lib/translations/es-cl"
 import { Container, clx } from "@modules/common/components/ui"
 import Image from "next/image"
 import React from "react"
-
 import PlaceholderImage from "@modules/common/icons/placeholder-image"
-
 type ThumbnailProps = {
   thumbnail?: string | null
-  images?: { url?: string }[] | null
+  images?:
+    | {
+        url?: string
+      }[]
+    | null
   size?: "small" | "medium" | "large" | "full" | "square"
   isFeatured?: boolean
   className?: string
   "data-testid"?: string
 }
-
 const Thumbnail: React.FC<ThumbnailProps> = ({
   thumbnail,
   images,
@@ -22,7 +24,6 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   "data-testid": dataTestid,
 }) => {
   const initialImage = thumbnail || images?.[0]?.url
-
   return (
     <Container
       className={clx(
@@ -36,7 +37,7 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
           "w-[290px]": size === "medium",
           "w-[440px]": size === "large",
           "w-full": size === "full",
-        }
+        },
       )}
       data-testid={dataTestid}
     >
@@ -44,15 +45,16 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
     </Container>
   )
 }
-
 const ImageOrPlaceholder = ({
   image,
   size,
-}: Pick<ThumbnailProps, "size"> & { image?: string }) => {
+}: Pick<ThumbnailProps, "size"> & {
+  image?: string
+}) => {
   return image ? (
     <Image
       src={image}
-      alt="Thumbnail"
+      alt={esCl.accessibility.productThumbnail}
       className="absolute inset-0 object-cover object-center"
       draggable={false}
       quality={50}
@@ -65,5 +67,4 @@ const ImageOrPlaceholder = ({
     </div>
   )
 }
-
 export default Thumbnail

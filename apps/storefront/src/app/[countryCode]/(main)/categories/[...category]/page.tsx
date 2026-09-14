@@ -27,11 +27,11 @@ export async function generateStaticParams() {
   }
 
   const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat(),
   )
 
   const categoryHandles = product_categories.map(
-    (category: HttpTypes.StoreProductCategory) => category.handle
+    (category: HttpTypes.StoreProductCategory) => category.handle,
   )
 
   const staticParams = countryCodes
@@ -39,7 +39,7 @@ export async function generateStaticParams() {
       categoryHandles.map((handle: string) => ({
         countryCode,
         category: [handle],
-      }))
+      })),
     )
     .flat()
 
@@ -51,15 +51,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const productCategory = await getCategoryByHandle(params.category)
 
-    const title = productCategory.name + " | Indiscreta"
+    const title = productCategory.name
 
-    const description = productCategory.description ?? `${title} category.`
+    const description =
+      productCategory.description ??
+      `Descubre ${productCategory.name} en Indiscreta. Moda femenina con despacho a todo Chile.`
 
     return {
-      title: `${title} | Indiscreta`,
+      title,
       description,
       alternates: {
-        canonical: `${params.category.join("/")}`,
+        canonical: `/${params.countryCode}/categories/${params.category.join("/")}`,
       },
     }
   } catch {

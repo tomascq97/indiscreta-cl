@@ -25,56 +25,84 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
     discount_subtotal,
   } = totals
 
+  const format = (amount?: number | null) =>
+    convertToLocale({
+      amount: amount ?? 0,
+      currency_code,
+    })
+
   return (
     <div>
-      <div className="flex flex-col gap-y-2 txt-medium text-ui-fg-subtle ">
-        <div className="flex items-center justify-between">
-          <span>Subtotal (excl. shipping and taxes)</span>
-          <span data-testid="cart-subtotal" data-value={item_subtotal || 0}>
-            {convertToLocale({ amount: item_subtotal ?? 0, currency_code })}
+      <div className="space-y-3 text-sm">
+        <div className="flex items-start justify-between gap-5">
+          <span className="text-neutral-600">Productos</span>
+          <span
+            className="font-medium text-black"
+            data-testid="cart-subtotal"
+            data-value={item_subtotal ?? 0}
+          >
+            {format(item_subtotal)}
           </span>
         </div>
-        <div className="flex items-center justify-between">
-          <span>Shipping</span>
-          <span data-testid="cart-shipping" data-value={shipping_subtotal || 0}>
-            {convertToLocale({ amount: shipping_subtotal ?? 0, currency_code })}
+
+        <div className="flex items-start justify-between gap-5">
+          <span className="text-neutral-600">Envío</span>
+          <span
+            className="text-right font-medium text-black"
+            data-testid="cart-shipping"
+            data-value={shipping_subtotal ?? 0}
+          >
+            {shipping_subtotal
+              ? format(shipping_subtotal)
+              : "Se calcula al finalizar"}
           </span>
         </div>
-        {!!discount_subtotal && (
-          <div className="flex items-center justify-between">
-            <span>Discount</span>
+
+        {discount_subtotal ? (
+          <div className="flex items-start justify-between gap-5">
+            <span className="text-neutral-600">Descuento</span>
             <span
-              className="text-ui-fg-interactive"
+              className="font-semibold text-[var(--color-rose-dark)]"
               data-testid="cart-discount"
-              data-value={discount_subtotal || 0}
+              data-value={discount_subtotal}
             >
-              -{" "}
-              {convertToLocale({
-                amount: discount_subtotal ?? 0,
-                currency_code,
-              })}
+              − {format(discount_subtotal)}
             </span>
           </div>
-        )}
-        <div className="flex justify-between">
-          <span className="flex gap-x-1 items-center ">Taxes</span>
-          <span data-testid="cart-taxes" data-value={tax_total || 0}>
-            {convertToLocale({ amount: tax_total ?? 0, currency_code })}
+        ) : null}
+
+        <div className="flex items-start justify-between gap-5">
+          <span className="text-neutral-600">Impuestos</span>
+          <span
+            className="font-medium text-black"
+            data-testid="cart-taxes"
+            data-value={tax_total ?? 0}
+          >
+            {format(tax_total)}
           </span>
         </div>
       </div>
-      <div className="h-px w-full border-b border-gray-200 my-4" />
-      <div className="flex items-center justify-between text-ui-fg-base mb-2 txt-medium ">
-        <span>Total</span>
-        <span
-          className="txt-xlarge-plus"
-          data-testid="cart-total"
-          data-value={total || 0}
-        >
-          {convertToLocale({ amount: total ?? 0, currency_code })}
-        </span>
+
+      <div className="mt-6 border-t border-neutral-300 pt-5">
+        <div className="flex items-end justify-between gap-5">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              Total estimado
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Incluye los impuestos informados.
+            </p>
+          </div>
+
+          <span
+            className="text-3xl font-bold tracking-[-0.04em] text-black"
+            data-testid="cart-total"
+            data-value={total ?? 0}
+          >
+            {format(total)}
+          </span>
+        </div>
       </div>
-      <div className="h-px w-full border-b border-gray-200 mt-4" />
     </div>
   )
 }

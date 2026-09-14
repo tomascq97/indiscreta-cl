@@ -35,11 +35,11 @@ export async function generateStaticParams() {
       regions
         ?.map((r) => r.countries?.map((c) => c.iso_2))
         .flat()
-        .filter(Boolean) as string[]
+        .filter(Boolean) as string[],
   )
 
   const collectionHandles = collections.map(
-    (collection: StoreCollection) => collection.handle
+    (collection: StoreCollection) => collection.handle,
   )
 
   const staticParams = countryCodes
@@ -47,7 +47,7 @@ export async function generateStaticParams() {
       collectionHandles.map((handle: string | undefined) => ({
         countryCode,
         handle,
-      }))
+      })),
     )
     .flat()
 
@@ -63,8 +63,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   const metadata = {
-    title: `${collection.title} | Indiscreta`,
-    description: `${collection.title} collection`,
+    title: collection.title,
+    description: `Descubre la colección ${collection.title} en Indiscreta. Moda femenina con despacho a todo Chile.`,
+    alternates: {
+      canonical: `/${params.countryCode}/collections/${params.handle}`,
+    },
   } as Metadata
 
   return metadata
@@ -77,7 +80,7 @@ export default async function CollectionPage(props: Props) {
   const optionValueIds = parseOptionValueIds(searchParams)
 
   const collection = await getCollectionByHandle(params.handle).then(
-    (collection) => collection
+    (collection) => collection,
   )
 
   if (!collection) {

@@ -6,6 +6,7 @@ import StripeWrapper from "./stripe-wrapper"
 import { HttpTypes } from "@medusajs/types"
 import { isStripeLike } from "@lib/constants"
 import { getStorefrontEnvironment } from "@lib/env-config"
+import { selectActivePaymentSession } from "@lib/util/payment-session"
 
 type PaymentWrapperProps = {
   cart: HttpTypes.StoreCart
@@ -26,9 +27,7 @@ const stripePromise = stripeKey
   : null
 
 const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
-  const paymentSession = cart.payment_collection?.payment_sessions?.find(
-    (s) => s.status === "pending",
-  )
+  const paymentSession = selectActivePaymentSession(cart)
 
   if (
     isStripeLike(paymentSession?.provider_id) &&

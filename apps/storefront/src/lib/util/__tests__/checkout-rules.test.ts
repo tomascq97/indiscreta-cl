@@ -7,7 +7,6 @@ import {
   isOrderReady,
   isPaidByGiftCard,
   isPaymentReady,
-  isReviewReady,
 } from "../checkout-rules"
 
 type CheckoutCart = Parameters<typeof getCheckoutStep>[0]
@@ -118,11 +117,11 @@ describe("checkout step", () => {
     ).toBe("payment")
   })
 
-  it("opens review when a payment session is pending", () => {
-    expect(getCheckoutStep(completeCart())).toBe("review")
+  it("opens payment when a payment session is pending", () => {
+    expect(getCheckoutStep(completeCart())).toBe("payment")
   })
 
-  it("opens review when gift cards cover the total", () => {
+  it("opens payment when gift cards cover the total", () => {
     expect(
       getCheckoutStep({
         ...completeCart(),
@@ -130,31 +129,17 @@ describe("checkout step", () => {
         gift_cards: [{}],
         total: 0,
       }),
-    ).toBe("review")
+    ).toBe("payment")
   })
 })
 
-describe("payment and review readiness", () => {
-  it("recognizes a cart ready for payment summary and review", () => {
+describe("payment and order readiness", () => {
+  it("recognizes a cart ready for payment and order placement", () => {
     const cart = completeCart()
 
     expect(isPaymentReady(cart)).toBe(true)
-    expect(isReviewReady(cart)).toBe(true)
     expect(isOrderReady(cart)).toBe(true)
   })
-
-  it("rejects review without a shipping address", () => {
-    expect(
-      isReviewReady({ ...completeCart(), shipping_address: undefined }),
-    ).toBe(false)
-  })
-
-  it("rejects review without a shipping method", () => {
-    expect(
-      isReviewReady({ ...completeCart(), shipping_methods: undefined }),
-    ).toBe(false)
-  })
-
   it("rejects payment and order without a pending payment session", () => {
     const cart = { ...completeCart(), payment_collection: undefined }
 
@@ -171,7 +156,6 @@ describe("payment and review readiness", () => {
     }
 
     expect(isPaidByGiftCard(cart)).toBe(false)
-    expect(isReviewReady(cart)).toBe(false)
   })
 
   it("accepts a fully gift-card-covered cart without a payment session", () => {

@@ -1,5 +1,7 @@
 import type { HttpTypes } from "@medusajs/types"
 
+import { selectActivePaymentSession } from "./payment-session"
+
 type CheckoutCart = {
   billing_address?: unknown
   email?: string | null
@@ -12,7 +14,7 @@ type CheckoutCart = {
   gift_cards?: unknown[] | null
 }
 
-export type CheckoutStep = "address" | "delivery" | "payment" | "review"
+export type CheckoutStep = "address" | "delivery" | "payment"
 
 const addressFields = [
   "first_name",
@@ -65,23 +67,12 @@ export const isPaidByGiftCard = (cart: CheckoutCart) =>
   Boolean(cart.gift_cards?.length && cart.total === 0)
 
 export const hasPendingPaymentSession = (cart: CheckoutCart) =>
-  Boolean(
-    cart.payment_collection?.payment_sessions?.some(
-      (session) => session.status === "pending",
-    ),
-  )
+  Boolean(selectActivePaymentSession(cart))
 
 export const isPaymentReady = (cart: CheckoutCart) =>
   Boolean(
     (hasPendingPaymentSession(cart) && cart.shipping_methods?.length) ||
     isPaidByGiftCard(cart),
-  )
-
-export const isReviewReady = (cart: CheckoutCart) =>
-  Boolean(
-    cart.shipping_address &&
-    cart.shipping_methods?.length &&
-    (hasPendingPaymentSession(cart) || isPaidByGiftCard(cart)),
   )
 
 export const isOrderReady = (cart: CheckoutCart) =>
@@ -101,10 +92,5 @@ export const getCheckoutStep = (cart: CheckoutCart): CheckoutStep => {
   if (!cart.shipping_methods?.length) {
     return "delivery"
   }
-
-  if (hasPendingPaymentSession(cart) || isPaidByGiftCard(cart)) {
-    return "review"
-  }
-
-  return "payment"
+return "payment"
 }

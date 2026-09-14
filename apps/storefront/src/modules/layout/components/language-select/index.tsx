@@ -1,5 +1,7 @@
 "use client"
 
+import { esCl } from "@lib/translations/es-cl"
+
 import {
   Listbox,
   ListboxButton,
@@ -129,7 +131,7 @@ const LanguageSelect = ({
       >
         <ListboxButton className="py-1 w-full">
           <div className="txt-compact-small flex items-start gap-x-2">
-            <span>Language:</span>
+            <span>{esCl.navigation.language}:</span>
             {current && (
               <span className="txt-compact-small flex items-center gap-x-2">
                 {current.countryCode && (

@@ -20,12 +20,17 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
   title: {
-    default: "Tienda de moda femenina",
-    template: "%s | Tienda",
+    default: "Indiscreta | Moda femenina",
+    template: "%s | Indiscreta",
   },
   description: "Moda femenina, calzado y accesorios con despacho a todo Chile.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+  },
   openGraph: {
     locale: storefrontRegionalConfig.openGraphLocale,
+    siteName: "Indiscreta",
   },
 }
 

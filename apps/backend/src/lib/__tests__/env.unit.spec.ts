@@ -17,6 +17,22 @@ const validS3Environment = {
   S3_BUCKET: "test-bucket",
 };
 
+const validWebpayEnvironment = {
+  WEBPAY_ENVIRONMENT: "integration",
+  WEBPAY_COMMERCE_CODE: "integration-commerce-code",
+  WEBPAY_API_KEY_SECRET: "integration-api-key",
+  WEBPAY_RETURN_URL: "http://localhost:9000/store/webpay/return",
+  WEBPAY_RESULT_URL: "http://localhost:8000/cl/payment/result",
+};
+
+const validProductionInfrastructure = {
+  NODE_ENV: "production",
+  MEDUSA_WORKER_MODE: "server",
+  MEDUSA_FF_CACHING: "true",
+  REDIS_URL: "redis://redis.invalid:6379",
+  ...validS3Environment,
+};
+
 describe("validateBackendEnvironment", () => {
   it("defaults to shared mode in development", () => {
     expect(validateBackendEnvironment(validEnvironment)).toEqual({
@@ -33,6 +49,204 @@ describe("validateBackendEnvironment", () => {
 
   it("allows development to use local file storage without S3", () => {
     expect(validateBackendEnvironment(validEnvironment).S3).toBeUndefined();
+  });
+
+  it("allows development without Webpay configuration", () => {
+    expect(validateBackendEnvironment(validEnvironment).WEBPAY).toBeUndefined();
+  });
+
+  it("keeps Shipit disabled by default", () => {
+    expect(validateBackendEnvironment(validEnvironment).SHIPIT).toBeUndefined();
+  });
+
+  it("accepts an enabled read-only Shipit configuration", () => {
+    expect(
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: "https://api.shipit.cl",
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "true",
+      }).SHIPIT,
+    ).toMatchObject({
+      enabled: true,
+      shipmentCreationEnabled: false,
+      sandbox: true,
+      timeoutMs: 5000,
+      readMaxRetries: 1,
+      originCommuneId: 308,
+      ratesAreNet: true,
+    });
+  });
+
+  it("rejects Shipit shipment creation while Shipit is disabled", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_SHIPMENT_CREATION_ENABLED: "true",
+      }),
+    ).toThrow("requires SHIPIT_ENABLED=true");
+  });
+
+  it("rejects live Shipit shipment creation outside production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_SHIPMENT_CREATION_ENABLED: "true",
+        SHIPIT_SANDBOX: "false",
+      }),
+    ).toThrow("requires NODE_ENV=production");
+  });
+
+  it("rejects non-official Shipit hosts without echoing the URL", () => {
+    const privateUrl = "https://private.invalid/secret";
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: privateUrl,
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "true",
+      }),
+    ).toThrow("SHIPIT_API_BASE_URL must use its official Shipit HTTPS host");
+  });
+
+  it("requires Shipit rates to be declared as net", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        SHIPIT_ENABLED: "true",
+        SHIPIT_API_BASE_URL: "https://api.shipit.cl",
+        SHIPIT_PRICES_BASE_URL: "https://prices.shipit.cl",
+        SHIPIT_TRACKING_BASE_URL: "https://courierstatus.shipit.cl",
+        SHIPIT_EMAIL: "account@example.invalid",
+        SHIPIT_ACCESS_TOKEN: "test-token",
+        SHIPIT_ORIGIN_COMMUNE_ID: "308",
+        SHIPIT_RATES_ARE_NET: "false",
+      }),
+    ).toThrow("SHIPIT_RATES_ARE_NET must be true");
+  });
+
+  it("accepts a complete Webpay integration configuration", () => {
+    expect(
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validWebpayEnvironment,
+      }).WEBPAY,
+    ).toEqual({
+      environment: "integration",
+      commerceCode: validWebpayEnvironment.WEBPAY_COMMERCE_CODE,
+      apiKeySecret: validWebpayEnvironment.WEBPAY_API_KEY_SECRET,
+      returnUrl: validWebpayEnvironment.WEBPAY_RETURN_URL,
+      resultUrl: validWebpayEnvironment.WEBPAY_RESULT_URL,
+    });
+  });
+
+  it("rejects a partial Webpay configuration", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        WEBPAY_ENVIRONMENT: "integration",
+      }),
+    ).toThrow(
+      "WEBPAY_COMMERCE_CODE, WEBPAY_API_KEY_SECRET, WEBPAY_RETURN_URL, WEBPAY_RESULT_URL",
+    );
+  });
+
+  it("rejects an unsupported Webpay environment without echoing it", () => {
+    const invalidEnvironment = "invalid-webpay-environment";
+
+    try {
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validWebpayEnvironment,
+        WEBPAY_ENVIRONMENT: invalidEnvironment,
+      });
+      throw new Error("Expected validation to fail");
+    } catch (error) {
+      const message = (error as Error).message;
+
+      expect(message).toContain("WEBPAY_ENVIRONMENT");
+      expect(message).toContain("integration, production");
+      expect(message).not.toContain(invalidEnvironment);
+    }
+  });
+
+  it("rejects malformed Webpay URLs without echoing secrets or values", () => {
+    const sensitiveValue = "sensitive-webpay-secret";
+    const invalidUrl = "not-a-url-with-private-data";
+
+    try {
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validWebpayEnvironment,
+        WEBPAY_API_KEY_SECRET: sensitiveValue,
+        WEBPAY_RETURN_URL: invalidUrl,
+      });
+      throw new Error("Expected validation to fail");
+    } catch (error) {
+      const message = (error as Error).message;
+
+      expect(message).toContain("WEBPAY_RETURN_URL");
+      expect(message).not.toContain(sensitiveValue);
+      expect(message).not.toContain(invalidUrl);
+    }
+  });
+
+  it("requires every Webpay variable in production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validProductionInfrastructure,
+      }),
+    ).toThrow(
+      "WEBPAY_ENVIRONMENT, WEBPAY_COMMERCE_CODE, WEBPAY_API_KEY_SECRET, WEBPAY_RETURN_URL, WEBPAY_RESULT_URL",
+    );
+  });
+
+  it("rejects Webpay Integration in production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validProductionInfrastructure,
+        ...validWebpayEnvironment,
+        WEBPAY_RETURN_URL: "https://backend.invalid/webpay/return",
+        WEBPAY_RESULT_URL: "https://store.invalid/cl/webpay/result",
+      }),
+    ).toThrow("Production requires WEBPAY_ENVIRONMENT=production");
+  });
+
+  it("requires HTTPS Webpay URLs in production", () => {
+    expect(() =>
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validProductionInfrastructure,
+        ...validWebpayEnvironment,
+        WEBPAY_ENVIRONMENT: "production",
+      }),
+    ).toThrow("WEBPAY_RETURN_URL must be a valid URL using https:");
+  });
+
+  it("accepts complete production Webpay credentials with HTTPS URLs", () => {
+    expect(
+      validateBackendEnvironment({
+        ...validEnvironment,
+        ...validProductionInfrastructure,
+        ...validWebpayEnvironment,
+        WEBPAY_ENVIRONMENT: "production",
+        WEBPAY_RETURN_URL: "https://backend.invalid/store/webpay/return",
+        WEBPAY_RESULT_URL: "https://store.invalid/cl/payment/result",
+      }).WEBPAY?.environment,
+    ).toBe("production");
   });
 
   it("accepts a complete S3-compatible configuration", () => {

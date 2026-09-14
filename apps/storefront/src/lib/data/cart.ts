@@ -16,6 +16,7 @@ import {
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
 import { getCheckoutAddressPayload } from "@lib/util/checkout-rules"
+import { formatChileanRut, isValidChileanRut } from "@lib/util/chilean-rut"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -25,7 +26,7 @@ import { getCheckoutAddressPayload } from "@lib/util/checkout-rules"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *metadata, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, +shipping_methods.data"
 
   if (!id) {
     return null
@@ -60,7 +61,12 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
+
+  if (cart?.completed_at) {
+    await removeCartId()
+    cart = null
+  }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -221,16 +227,26 @@ export async function deleteLineItem(lineId: string) {
 export async function setShippingMethod({
   cartId,
   shippingMethodId,
+  data,
 }: {
   cartId: string
   shippingMethodId: string
+  data?: Record<string, unknown>
 }) {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
   return sdk.store.cart
-    .addShippingMethod(cartId, { option_id: shippingMethodId }, {}, headers)
+    .addShippingMethod(
+      cartId,
+      {
+        option_id: shippingMethodId,
+        ...(data ? { data } : {}),
+      },
+      {},
+      headers
+    )
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
@@ -254,6 +270,71 @@ export async function initiatePaymentSession(
       return resp
     })
     .catch(medusaError)
+}
+
+const WEBPAY_PROVIDER_ID = "pp_webpay-plus_webpay"
+const WEBPAY_ACTIVE_SESSION_STATUSES = new Set([
+  "pending",
+  "requires_more",
+  "pending_authorization",
+])
+
+export async function retryWebpayPayment(countryCode: string) {
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    throw new Error("No existing cart found for Webpay retry")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  const { cart } = await sdk.client.fetch<HttpTypes.StoreCartResponse>(
+    `/store/carts/${cartId}`,
+    {
+      method: "GET",
+      query: {
+        fields:
+          "id,*payment_collection,*payment_collection.payment_sessions",
+      },
+      headers,
+      cache: "no-store",
+    },
+  )
+
+  const activeWebpaySessions = (
+    cart.payment_collection?.payment_sessions ?? []
+  ).filter(
+    (session) =>
+      session.provider_id === WEBPAY_PROVIDER_ID &&
+      Boolean(
+        session.status &&
+          WEBPAY_ACTIVE_SESSION_STATUSES.has(session.status),
+      ),
+  )
+
+  if (activeWebpaySessions.length > 1) {
+    throw new Error(
+      "Expected at most one active Webpay payment session during retry",
+    )
+  }
+
+  if (activeWebpaySessions.length === 0) {
+    await sdk.store.payment.initiatePaymentSession(
+      cart,
+      {
+        provider_id: WEBPAY_PROVIDER_ID,
+      },
+      {},
+      headers,
+    )
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+
+  redirect(`/${countryCode}/checkout?step=payment`)
 }
 
 export async function applyPromotions(codes: string[]) {
@@ -345,7 +426,15 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
       throw new Error("No existing cart found when setting addresses")
     }
 
-    await updateCart(getCheckoutAddressPayload(formData))
+    const rut = String(formData.get("customer_rut") ?? "")
+    if (!isValidChileanRut(rut)) {
+      throw new Error("Ingresa un RUT chileno vÃƒÂ¡lido")
+    }
+
+    await updateCart({
+      ...getCheckoutAddressPayload(formData),
+      metadata: { customer_rut: formatChileanRut(rut) },
+    })
   } catch (error: unknown) {
     return error instanceof Error ? error.message : String(error)
   }

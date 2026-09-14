@@ -1,0 +1,196 @@
+import type { ExecArgs } from "@medusajs/framework/types"
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+  Modules,
+} from "@medusajs/framework/utils"
+import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
+
+import {
+  SHIPIT_FULFILLMENT_PROVIDER_ID,
+  shipitBranchOfficeOption,
+  shipitHomeEconomyOption,
+} from "../modules/shipit-fulfillment/service"
+
+function assertSafeEnvironment() {
+  const database = new URL(process.env.DATABASE_URL ?? "")
+  const isLocalDatabase = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(
+    database.hostname,
+  )
+  const isExplicitSandboxSetup =
+    process.env.ALLOW_SHIPIT_SANDBOX_SETUP === "true" &&
+    process.env.SHIPIT_SANDBOX === "true"
+
+  if (
+    (!isLocalDatabase && !isExplicitSandboxSetup) ||
+    process.env.SHIPIT_ENABLED !== "true" ||
+    process.env.SHIPIT_SHIPMENT_CREATION_ENABLED !== "false"
+  ) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Shipit setup requires a local database or explicit sandbox authorization, enabled quotes, and disabled shipment creation",
+    )
+  }
+}
+
+export default async function setupShipitLocal({ container }: ExecArgs) {
+  assertSafeEnvironment()
+
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const link = container.resolve(ContainerRegistrationKeys.LINK)
+
+  const [locations, profiles, zones, options] = await Promise.all([
+    query.graph({
+      entity: "stock_location",
+      fields: ["id", "fulfillment_providers.id"],
+    }),
+    query.graph({ entity: "shipping_profile", fields: ["id"] }),
+    query.graph({
+      entity: "service_zone",
+      fields: ["id", "name", "geo_zones.country_code"],
+    }),
+    query.graph({
+      entity: "shipping_option",
+      fields: ["id", "name", "provider_id", "data"],
+      filters: { provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID },
+    }),
+  ])
+
+  const location = locations.data[0]
+  const profile = profiles.data[0]
+  const zone = zones.data.find((candidate) =>
+    (candidate.geo_zones ?? []).some(
+      (geoZone) => geoZone?.country_code?.toLowerCase() === "cl",
+    ),
+  )
+  if (!location || !profile || !zone) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      "Stock location, shipping profile, or Chile service zone is missing",
+    )
+  }
+
+  if (
+    !(location.fulfillment_providers ?? []).some(
+      (provider) => provider?.id === SHIPIT_FULFILLMENT_PROVIDER_ID,
+    )
+  ) {
+    await link.create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+      [Modules.FULFILLMENT]: {
+        fulfillment_provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      },
+    })
+  }
+
+  const existingOptionIds = new Set(
+    options.data
+      .map((option) => {
+        const data = option.data as { id?: unknown } | null | undefined
+        return typeof data?.id === "string" ? data.id : null
+      })
+      .filter((id): id is string => Boolean(id)),
+  )
+
+  const optionsToCreate: Array<{
+    name: string
+    price_type: "calculated"
+    provider_id: string
+    service_zone_id: string
+    shipping_profile_id: string
+    data: {
+      id: string
+      destination_kind: string
+      selection_policy: string
+    }
+    type: {
+      label: string
+      description: string
+      code: string
+    }
+    rules: Array<{
+      attribute: string
+      value: string
+      operator: "eq"
+    }>
+  }> = []
+
+  if (!existingOptionIds.has(shipitHomeEconomyOption.id)) {
+    optionsToCreate.push({
+      name: "Shipit domicilio economico",
+      price_type: "calculated" as const,
+      provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      service_zone_id: zone.id,
+      shipping_profile_id: profile.id,
+      data: shipitHomeEconomyOption,
+      type: {
+        label: "Shipit domicilio",
+        description: "Despacho a domicilio mediante Shipit.",
+        code: "shipit-home-economy",
+      },
+      rules: [
+        {
+          attribute: "enabled_in_store",
+          value: "true",
+          operator: "eq" as const,
+        },
+        {
+          attribute: "is_return",
+          value: "false",
+          operator: "eq" as const,
+        },
+      ],
+    })
+  }
+
+  if (!existingOptionIds.has(shipitBranchOfficeOption.id)) {
+    optionsToCreate.push({
+      name: "Shipit retiro en sucursal",
+      price_type: "calculated" as const,
+      provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      service_zone_id: zone.id,
+      shipping_profile_id: profile.id,
+      data: shipitBranchOfficeOption,
+      type: {
+        label: "Shipit sucursal",
+        description: "Retiro en sucursal de courier mediante Shipit.",
+        code: "shipit-branch-office",
+      },
+      rules: [
+        {
+          attribute: "enabled_in_store",
+          value: "true",
+          operator: "eq" as const,
+        },
+        {
+          attribute: "is_return",
+          value: "false",
+          operator: "eq" as const,
+        },
+      ],
+    })
+  }
+
+  if (optionsToCreate.length) {
+    await createShippingOptionsWorkflow(container).run({
+      input: optionsToCreate,
+    })
+  }
+
+  const { data: configuredOptions } = await query.graph({
+    entity: "shipping_option",
+    fields: ["id", "name", "provider_id", "price_type", "data"],
+    filters: { provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID },
+  })
+  console.log(
+    JSON.stringify(
+      {
+        locationId: location.id,
+        serviceZoneId: zone.id,
+        shippingOptions: configuredOptions,
+      },
+      null,
+      2,
+    ),
+  )
+}

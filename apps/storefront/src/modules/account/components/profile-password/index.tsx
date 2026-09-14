@@ -1,28 +1,25 @@
 "use client"
-
+import { esCl } from "@lib/translations/es-cl"
 import React from "react"
 import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
 // TODO: Re-add toast notifications when Toaster component is implemented
-
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
 }
-
-const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) => {
+const ProfilePassword: React.FC<MyInformationProps> = ({
+  customer: _customer,
+}) => {
   const [successState, setSuccessState] = React.useState(false)
-
   // TODO: Add support for password updates
   const updatePassword = async () => {
     // TODO: Re-add toast notification when Toaster component is implemented
     console.info("Password update is not implemented")
   }
-
   const clearState = () => {
     setSuccessState(false)
   }
-
   return (
     <form
       action={updatePassword}
@@ -30,10 +27,8 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) 
       className="w-full"
     >
       <AccountInfo
-        label="Password"
-        currentInfo={
-          <span>The password is not shown for security reasons</span>
-        }
+        label={esCl.account.password}
+        currentInfo={<span>La contraseña no se muestra por seguridad</span>}
         isSuccess={successState}
         isError={false}
         errorMessage={undefined}
@@ -42,21 +37,21 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) 
       >
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Old password"
+            label="Contraseña actual"
             name="old_password"
             required
             type="password"
             data-testid="old-password-input"
           />
           <Input
-            label="New password"
+            label="Nueva contraseña"
             type="password"
             name="new_password"
             required
             data-testid="new-password-input"
           />
           <Input
-            label="Confirm password"
+            label={esCl.account.confirmPassword}
             type="password"
             name="confirm_password"
             required
@@ -67,5 +62,4 @@ const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) 
     </form>
   )
 }
-
 export default ProfilePassword

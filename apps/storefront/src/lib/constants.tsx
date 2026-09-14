@@ -3,6 +3,7 @@ import Bancontact from "@modules/common/icons/bancontact"
 import Ideal from "@modules/common/icons/ideal"
 import PayPal from "@modules/common/icons/paypal"
 import React from "react"
+import { WEBPAY_PROVIDER_ID } from "./util/payment-button-kind"
 
 /* Map of payment provider_id to their title and icon. Add in any payment providers you want to use. */
 export const paymentInfoMap: Record<
@@ -10,11 +11,11 @@ export const paymentInfoMap: Record<
   { title: string; icon: React.JSX.Element }
 > = {
   pp_stripe_stripe: {
-    title: "Credit card",
+    title: "Tarjeta de crédito",
     icon: <CreditCard />,
   },
   "pp_medusa-payments_default": {
-    title: "Credit card",
+    title: "Tarjeta de crédito",
     icon: <CreditCard />,
   },
   "pp_stripe-ideal_stripe": {
@@ -30,7 +31,11 @@ export const paymentInfoMap: Record<
     icon: <PayPal />,
   },
   pp_system_default: {
-    title: "Manual Payment",
+    title: "Pago seguro · modo prueba",
+    icon: <CreditCard />,
+  },
+  "pp_webpay-plus_webpay": {
+    title: "Webpay Plus",
     icon: <CreditCard />,
   },
   // Add more payment providers here
@@ -48,6 +53,12 @@ export const isPaypal = (providerId?: string) => {
 }
 export const isManual = (providerId?: string) => {
   return providerId?.startsWith("pp_system_default")
+}
+
+export { WEBPAY_PROVIDER_ID }
+
+export const isWebpay = (providerId?: string) => {
+  return providerId === WEBPAY_PROVIDER_ID
 }
 
 // Add currencies that don't need to be divided by 100

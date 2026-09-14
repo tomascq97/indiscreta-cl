@@ -22,6 +22,7 @@ import {
   linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
 } from "@medusajs/medusa/core-flows";
+import { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../modules/shipit-fulfillment/service";
 
 export default async function initial_data_seed({
   container,
@@ -36,6 +37,11 @@ export default async function initial_data_seed({
   );
 
   const countries = ["cl"];
+  const integrationPaymentProviders =
+    process.env.NODE_ENV !== "production" &&
+    process.env.WEBPAY_ENVIRONMENT === "integration"
+      ? ["pp_system_default", "pp_webpay-plus_webpay"]
+      : ["pp_system_default"];
 
   // Regional, shipping, product, and price values are CI/demo fixtures, not approved legal or commercial configuration.
   logger.info("Seeding store data...");
@@ -100,7 +106,7 @@ export default async function initial_data_seed({
           name: "Chile",
           currency_code: "clp",
           countries,
-          payment_providers: ["pp_system_default"],
+          payment_providers: integrationPaymentProviders,
         },
       ],
     },
@@ -144,6 +150,17 @@ export default async function initial_data_seed({
       fulfillment_provider_id: "manual_manual",
     },
   });
+
+  if (process.env.SHIPIT_ENABLED === "true") {
+    await link.create({
+      [Modules.STOCK_LOCATION]: {
+        stock_location_id: stockLocation.id,
+      },
+      [Modules.FULFILLMENT]: {
+        fulfillment_provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      },
+    });
+  }
 
   logger.info("Seeding fulfillment data...");
   // This is created by a migration script in core.
@@ -248,6 +265,68 @@ export default async function initial_data_seed({
           },
         ],
       },
+      ...(process.env.SHIPIT_ENABLED === "true"
+        ? [
+            {
+              name: "Shipit domicilio economico",
+              price_type: "calculated" as const,
+              provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+              service_zone_id: fulfillmentSet.service_zones[0].id,
+              shipping_profile_id: shippingProfile.id,
+              data: {
+                id: "shipit-home-economy",
+                destination_kind: "home_delivery",
+                selection_policy: "cheapest-v1",
+              },
+              type: {
+                label: "Shipit domicilio",
+                description: "Despacho a domicilio mediante Shipit.",
+                code: "shipit-home-economy",
+              },
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq" as const,
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq" as const,
+                },
+              ],
+            },
+            {
+              name: "Shipit retiro en sucursal",
+              price_type: "calculated" as const,
+              provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+              service_zone_id: fulfillmentSet.service_zones[0].id,
+              shipping_profile_id: shippingProfile.id,
+              data: {
+                id: "shipit-branch-office",
+                destination_kind: "courier_branch_office",
+                selection_policy: "selected-branch-v1",
+              },
+              type: {
+                label: "Shipit sucursal",
+                description: "Retiro en sucursal de courier mediante Shipit.",
+                code: "shipit-branch-office",
+              },
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq" as const,
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq" as const,
+                },
+              ],
+            },
+          ]
+        : []),
     ],
   });
   logger.info("Finished seeding fulfillment data.");

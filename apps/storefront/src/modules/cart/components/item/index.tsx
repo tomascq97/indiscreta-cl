@@ -1,18 +1,13 @@
 "use client"
 
-import { Table, Text, clx } from "@modules/common/components/ui"
-import { updateLineItem } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
-import CartItemSelect from "@modules/cart/components/cart-item-select"
-import ErrorMessage from "@modules/checkout/components/error-message"
+import CartQuantityStepper from "@modules/cart/components/cart-quantity-stepper"
 import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
 import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
-import { useState } from "react"
 
 type ItemProps = {
   item: HttpTypes.StoreCartLineItem
@@ -21,123 +16,118 @@ type ItemProps = {
 }
 
 const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
-  const [updating, setUpdating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const changeQuantity = async (quantity: number) => {
-    setError(null)
-    setUpdating(true)
-
-    await updateLineItem({
-      lineId: item.id,
-      quantity,
-    })
-      .catch((err) => {
-        setError(err.message)
-      })
-      .finally(() => {
-        setUpdating(false)
-      })
-  }
-
-  // TODO: Update this to grab the actual max inventory
   const maxQtyFromInventory = 10
   const maxQuantity = item.variant?.manage_inventory ? 10 : maxQtyFromInventory
 
-  return (
-    <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
-        <LocalizedClientLink
-          href={`/products/${item.product_handle}`}
-          className={clx("flex", {
-            "w-16": type === "preview",
-            "small:w-24 w-12": type === "full",
-          })}
-        >
+  if (type === "preview") {
+    return (
+      <div className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 py-4">
+        <LocalizedClientLink href={`/products/${item.product_handle}`}>
           <Thumbnail
             thumbnail={item.thumbnail}
             images={item.variant?.product?.images}
             size="square"
           />
         </LocalizedClientLink>
-      </Table.Cell>
 
-      <Table.Cell className="text-left">
-        <Text
-          className="txt-medium-plus text-ui-fg-base"
-          data-testid="product-title"
-        >
-          {item.product_title}
-        </Text>
-        <LineItemOptions variant={item.variant} data-testid="product-variant" />
-      </Table.Cell>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{item.product_title}</p>
+          <LineItemOptions variant={item.variant} />
+          <p className="mt-1 text-xs text-neutral-500">
+            {item.quantity} {item.quantity === 1 ? "unidad" : "unidades"}
+          </p>
+        </div>
 
-      {type === "full" && (
-        <Table.Cell>
-          <div className="flex gap-2 items-center w-28">
-            <DeleteButton id={item.id} data-testid="product-delete-button" />
-            <CartItemSelect
-              value={item.quantity}
-              onChange={(value) => changeQuantity(parseInt(value.target.value))}
-              className="w-14 h-10 p-4"
-              data-testid="product-select-button"
+        <LineItemPrice item={item} style="tight" currencyCode={currencyCode} />
+      </div>
+    )
+  }
+
+  return (
+    <article
+      className="grid gap-5 py-7 sm:grid-cols-[170px_minmax(0,1fr)]"
+      data-testid="product-row"
+    >
+      <LocalizedClientLink
+        href={`/products/${item.product_handle}`}
+        className="block overflow-hidden bg-neutral-100"
+      >
+        <Thumbnail
+          thumbnail={item.thumbnail}
+          images={item.variant?.product?.images}
+          size="square"
+        />
+      </LocalizedClientLink>
+
+      <div className="flex min-w-0 flex-col justify-between gap-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <LocalizedClientLink
+              href={`/products/${item.product_handle}`}
+              className="text-xl font-bold tracking-[-0.025em] text-black transition-colors hover:text-[var(--color-rose-dark)]"
+              data-testid="product-title"
             >
-              {/* TODO: Update this with the v2 way of managing inventory */}
-              {Array.from(
-                {
-                  length: Math.min(maxQuantity, 10),
-                },
-                (_, i) => (
-                  <option value={i + 1} key={i}>
-                    {i + 1}
-                  </option>
-                )
-              )}
+              {item.product_title}
+            </LocalizedClientLink>
 
-              <option value={1} key={1}>
-                1
-              </option>
-            </CartItemSelect>
-            {updating && <Spinner />}
+            <div className="mt-2 text-sm text-neutral-500">
+              <LineItemOptions
+                variant={item.variant}
+                data-testid="product-variant"
+              />
+            </div>
+
+            <div className="mt-5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+                Precio unitario
+              </p>
+              <div className="mt-1 text-sm font-medium text-black">
+                <LineItemUnitPrice
+                  item={item}
+                  style="tight"
+                  currencyCode={currencyCode}
+                />
+              </div>
+            </div>
           </div>
-          <ErrorMessage error={error} data-testid="product-error-message" />
-        </Table.Cell>
-      )}
 
-      {type === "full" && (
-        <Table.Cell className="hidden small:table-cell">
-          <LineItemUnitPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
-        </Table.Cell>
-      )}
-
-      <Table.Cell className="!pr-0">
-        <span
-          className={clx("!pr-0", {
-            "flex flex-col items-end h-full justify-center": type === "preview",
-          })}
-        >
-          {type === "preview" && (
-            <span className="flex gap-x-1 ">
-              <Text className="text-ui-fg-muted">{item.quantity}x </Text>
-              <LineItemUnitPrice
+          <div className="shrink-0 text-left sm:text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              Subtotal
+            </p>
+            <div className="mt-1 text-xl font-bold tracking-[-0.02em] text-black">
+              <LineItemPrice
                 item={item}
                 style="tight"
                 currencyCode={currencyCode}
               />
-            </span>
-          )}
-          <LineItemPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
-        </span>
-      </Table.Cell>
-    </Table.Row>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-5 border-t border-neutral-200 pt-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
+              Cantidad
+            </p>
+
+            <CartQuantityStepper
+              lineId={item.id}
+              quantity={item.quantity}
+              maxQuantity={Math.min(maxQuantity, 10)}
+            />
+          </div>
+
+          <DeleteButton
+            id={item.id}
+            className="inline-flex min-h-11 items-center justify-center border border-neutral-300 px-5 text-[11px] font-semibold uppercase tracking-[0.1em] text-neutral-600 transition-colors hover:border-red-700 hover:text-red-700"
+            data-testid="product-delete-button"
+          >
+            Eliminar
+          </DeleteButton>
+        </div>
+      </div>
+    </article>
   )
 }
 
