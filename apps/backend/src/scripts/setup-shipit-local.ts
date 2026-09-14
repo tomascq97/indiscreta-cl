@@ -8,6 +8,7 @@ import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
 import {
   SHIPIT_FULFILLMENT_PROVIDER_ID,
+  shipitBranchOfficeOption,
   shipitHomeEconomyOption,
 } from "../modules/shipit-fulfillment/service"
 
@@ -82,35 +83,97 @@ export default async function setupShipitLocal({ container }: ExecArgs) {
     })
   }
 
-  if (!options.data.length) {
-    await createShippingOptionsWorkflow(container).run({
-      input: [
+  const existingOptionIds = new Set(
+    options.data
+      .map((option) => {
+        const data = option.data as { id?: unknown } | null | undefined
+        return typeof data?.id === "string" ? data.id : null
+      })
+      .filter((id): id is string => Boolean(id)),
+  )
+
+  const optionsToCreate: Array<{
+    name: string
+    price_type: "calculated"
+    provider_id: string
+    service_zone_id: string
+    shipping_profile_id: string
+    data: {
+      id: string
+      destination_kind: string
+      selection_policy: string
+    }
+    type: {
+      label: string
+      description: string
+      code: string
+    }
+    rules: Array<{
+      attribute: string
+      value: string
+      operator: "eq"
+    }>
+  }> = []
+
+  if (!existingOptionIds.has(shipitHomeEconomyOption.id)) {
+    optionsToCreate.push({
+      name: "Shipit domicilio economico",
+      price_type: "calculated" as const,
+      provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      service_zone_id: zone.id,
+      shipping_profile_id: profile.id,
+      data: shipitHomeEconomyOption,
+      type: {
+        label: "Shipit domicilio",
+        description: "Despacho a domicilio mediante Shipit.",
+        code: "shipit-home-economy",
+      },
+      rules: [
         {
-          name: "Shipit domicilio económico",
-          price_type: "calculated",
-          provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
-          service_zone_id: zone.id,
-          shipping_profile_id: profile.id,
-          data: shipitHomeEconomyOption,
-          type: {
-            label: "Shipit domicilio",
-            description: "Despacho a domicilio mediante Shipit.",
-            code: "shipit-home-economy",
-          },
-          rules: [
-            {
-              attribute: "enabled_in_store",
-              value: "true",
-              operator: "eq",
-            },
-            {
-              attribute: "is_return",
-              value: "false",
-              operator: "eq",
-            },
-          ],
+          attribute: "enabled_in_store",
+          value: "true",
+          operator: "eq" as const,
+        },
+        {
+          attribute: "is_return",
+          value: "false",
+          operator: "eq" as const,
         },
       ],
+    })
+  }
+
+  if (!existingOptionIds.has(shipitBranchOfficeOption.id)) {
+    optionsToCreate.push({
+      name: "Shipit retiro en sucursal",
+      price_type: "calculated" as const,
+      provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+      service_zone_id: zone.id,
+      shipping_profile_id: profile.id,
+      data: shipitBranchOfficeOption,
+      type: {
+        label: "Shipit sucursal",
+        description: "Retiro en sucursal de courier mediante Shipit.",
+        code: "shipit-branch-office",
+      },
+      rules: [
+        {
+          attribute: "enabled_in_store",
+          value: "true",
+          operator: "eq" as const,
+        },
+        {
+          attribute: "is_return",
+          value: "false",
+          operator: "eq" as const,
+        },
+      ],
+    })
+  }
+
+  if (optionsToCreate.length) {
+    await createShippingOptionsWorkflow(container).run({
+      input: optionsToCreate,
     })
   }
 

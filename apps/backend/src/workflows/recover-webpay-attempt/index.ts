@@ -15,6 +15,9 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk";
 import { completeCartWorkflow } from "@medusajs/medusa/core-flows";
+import { completeWebpayCartIdempotently } from "../../lib/webpay-complete-cart";
+import { ensureShipitAfterCompletedWebpay } from "../../lib/shipit/ensure-after-webpay";
+import { ensureMedusaShipitFulfillment } from "../../lib/shipit/ensure-medusa-fulfillment";
 
 import { validateBackendEnvironment } from "../../lib/env";
 import { createWebpayTransaction } from "../../lib/webpay-client";
@@ -45,16 +48,36 @@ const recoverWebpayAttemptStep = createStep(
         logger: container.resolve<Logger>(ContainerRegistrationKeys.LOGGER),
         transaction: createWebpayTransaction(environment.WEBPAY),
         completeCart: async (cartId) => {
-          const { result: cartResult } = await completeCartWorkflow(
-            container,
-          ).run({
-            input: { id: cartId },
+          const query = container.resolve<{
+            graph(input: Record<string, unknown>): Promise<{ data: unknown[] }>;
+          }>(ContainerRegistrationKeys.QUERY);
+
+          return completeWebpayCartIdempotently({
+            cartId,
+            query,
+            completeCart: async (id) => {
+              const { result: cartResult } = await completeCartWorkflow(
+                container,
+              ).run({
+                input: { id },
+              });
+
+              return cartResult as { id?: string };
+            },
           });
-          return cartResult as { id?: string; order?: { id: string } };
         },
       },
       input.attempt_id,
     );
+
+    await ensureShipitAfterCompletedWebpay({
+      attempt: result,
+      ensureFulfillment: (orderId) =>
+        ensureMedusaShipitFulfillment(container, orderId),
+      logger: container.resolve<Logger>(
+        ContainerRegistrationKeys.LOGGER,
+      ),
+    });
 
     return new StepResponse(result);
   },

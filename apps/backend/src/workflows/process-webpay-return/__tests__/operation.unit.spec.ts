@@ -67,7 +67,7 @@ function createHarness(overrides?: {
   const authorize =
     overrides?.authorize ?? jest.fn().mockResolvedValue({ id: "pay_123" });
   const complete =
-    overrides?.complete ?? jest.fn().mockResolvedValue({ id: "order_123" });
+    overrides?.complete ?? jest.fn().mockResolvedValue({ id: "order_123", total: 15990 });
   const updateSession = jest.fn().mockResolvedValue({});
   const deleteSession = jest.fn().mockResolvedValue(undefined);
 
@@ -146,6 +146,27 @@ describe("processWebpayReturnOperation", () => {
     );
   });
 
+  it("moves an order with a mismatched total to manual review", async () => {
+    const harness = createHarness({
+      complete: jest.fn().mockResolvedValue({
+        id: "order_mismatch",
+        total: 16000,
+      }),
+    });
+
+    const result = await processWebpayReturnOperation(harness.dependencies, {
+      token_ws: "token-123",
+    });
+
+    expect(result).toMatchObject({
+      state: "manual_review",
+      order_id: "order_mismatch",
+      failure_code: "order_amount_mismatch",
+    });
+
+    expect(harness.complete).toHaveBeenCalledTimes(1);
+    expect(harness.getAttempt().order_id).toBe("order_mismatch");
+  });
   it.each([
     ["a non-zero response code", { ...authorizedResponse, response_code: -1 }],
     ["a failed status", { ...authorizedResponse, status: "FAILED" }],
@@ -330,7 +351,7 @@ describe("processWebpayReturnOperation", () => {
     const complete = jest
       .fn()
       .mockRejectedValueOnce(new Error("order failure"))
-      .mockResolvedValueOnce({ id: "order_123" });
+      .mockResolvedValueOnce({ id: "order_123", total: 15990 });
     const harness = createHarness({ complete });
 
     const first = await processWebpayReturnOperation(harness.dependencies, {

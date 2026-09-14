@@ -4,9 +4,10 @@ import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
 import { isPaidByGiftCard, isPaymentReady } from "@lib/util/checkout-rules"
 import { HttpTypes } from "@medusajs/types"
-import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
+import { CheckCircleSolid } from "@medusajs/icons"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import PaymentButton from "@modules/checkout/components/payment-button"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import PaymentContainer, {
   StripeCardContainer,
 } from "@modules/checkout/components/payment-container"
@@ -28,8 +29,9 @@ const Payment = ({
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cardBrand, setCardBrand] = useState<string | null>(null)
-  const [cardComplete, setCardComplete] = useState(false)
+  const [, setCardBrand] = useState<string | null>(null)
+  const [, setCardComplete] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     initialActiveSession?.provider_id ?? "",
   )
@@ -44,18 +46,13 @@ const Payment = ({
 
   const paidByGiftcard = isPaidByGiftCard(cart)
   const paymentReady = isPaymentReady(cart)
-
   useEffect(() => {
     if (!isOpen) return
 
-    const acceptedTerms = sessionStorage.getItem("indiscreta-checkout-terms")
-
-    if (acceptedTerms !== "accepted") {
-      router.replace(`${pathname}?step=review`, {
-        scroll: false,
-      })
-    }
-  }, [isOpen, pathname, router])
+    setAcceptedTerms(
+      sessionStorage.getItem("indiscreta-checkout-terms") === "accepted"
+    )
+  }, [isOpen])
 
   useEffect(() => {
     setError(null)
@@ -65,24 +62,18 @@ const Payment = ({
     setError(null)
     setSelectedPaymentMethod(method)
 
-    if (isStripeLike(method)) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
-      router.refresh()
-    }
-  }
-
-  const preparePayment = async () => {
-    if (!selectedPaymentMethod && !paidByGiftcard) return
+    if (!method) return
 
     setIsLoading(true)
-    setError(null)
 
     try {
-      if (activeSession?.provider_id !== selectedPaymentMethod) {
+      const currentSession = selectActivePaymentSession(cart, {
+        providerId: method,
+      })
+
+      if (currentSession?.provider_id !== method) {
         await initiatePaymentSession(cart, {
-          provider_id: selectedPaymentMethod,
+          provider_id: method,
         })
       }
 
@@ -93,7 +84,6 @@ const Payment = ({
       setIsLoading(false)
     }
   }
-
   if (!isOpen) {
     return (
       <section className="border-b border-neutral-200 bg-white py-5">
@@ -111,7 +101,7 @@ const Payment = ({
     <section className="bg-white p-5 sm:p-7 lg:p-8">
       <header className="border-b border-neutral-200 pb-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--color-rose)]">
-          Paso 04
+          Paso 03
         </p>
 
         <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] text-black sm:text-3xl">
@@ -167,48 +157,98 @@ const Payment = ({
           data-testid="payment-method-error-message"
         />
 
+        <section className="mt-7 border border-neutral-200 p-5 sm:p-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--color-rose)]">
+            Aceptación obligatoria
+          </p>
+
+          <h3 className="mt-2 text-xl font-semibold text-black">
+            Términos y políticas
+          </h3>
+
+          <label className="mt-5 flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(event) => {
+                const accepted = event.target.checked
+
+                setAcceptedTerms(accepted)
+
+                if (accepted) {
+                  sessionStorage.setItem(
+                    "indiscreta-checkout-terms",
+                    "accepted"
+                  )
+                } else {
+                  sessionStorage.removeItem(
+                    "indiscreta-checkout-terms"
+                  )
+                }
+              }}
+              className="mt-1 h-5 w-5 shrink-0 accent-[var(--color-rose)]"
+              data-testid="accept-terms-checkbox"
+            />
+
+            <span className="text-sm leading-6 text-neutral-600">
+              He leído y acepto los{" "}
+              <LocalizedClientLink
+                href="/informacion#terminos-y-condiciones"
+                className="font-semibold text-black underline underline-offset-4"
+                target="_blank"
+              >
+                Términos y condiciones
+              </LocalizedClientLink>
+              , la{" "}
+              <LocalizedClientLink
+                href="/informacion#politica-de-privacidad"
+                className="font-semibold text-black underline underline-offset-4"
+                target="_blank"
+              >
+                Política de privacidad
+              </LocalizedClientLink>{" "}
+              y la{" "}
+              <LocalizedClientLink
+                href="/ayuda#cambios-y-devoluciones"
+                className="font-semibold text-black underline underline-offset-4"
+                target="_blank"
+              >
+                Política de cambios y devoluciones
+              </LocalizedClientLink>
+              .
+            </span>
+          </label>
+
+          {!acceptedTerms ? (
+            <p className="mt-4 text-xs leading-5 text-neutral-500">
+              Debes aceptar estas condiciones antes de finalizar tu compra.
+            </p>
+          ) : null}
+        </section>
         <div className="mt-7 border-t border-neutral-200 pt-6">
-          {activeSession || paidByGiftcard ? (
-            <>
-              <div className="mb-5 flex items-center gap-3 border border-neutral-200 bg-neutral-50 p-4">
-                <div className="flex h-10 w-10 items-center justify-center bg-white">
-                  {paymentInfoMap[
-                    activeSession?.provider_id ?? selectedPaymentMethod
-                  ]?.icon || <CreditCard />}
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
-                    Método preparado
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-black">
-                    {paymentInfoMap[
-                      activeSession?.provider_id ?? selectedPaymentMethod
-                    ]?.title || "Pago seguro"}
-                    {cardBrand ? ` · ${cardBrand}` : ""}
-                  </p>
-                </div>
-              </div>
-
+          {acceptedTerms ? (
+            activeSession || paidByGiftcard ? (
               <PaymentButton
                 cart={cart}
                 selectedPaymentMethod={selectedPaymentMethod}
                 data-testid="submit-order-button"
               />
-            </>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex min-h-[52px] w-full cursor-not-allowed items-center justify-center bg-neutral-200 px-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400"
+              >
+                {isLoading ? "Preparando pago..." : "Esperando medio de pago"}
+              </button>
+            )
           ) : (
             <button
               type="button"
-              onClick={preparePayment}
-              disabled={
-                isLoading ||
-                (!selectedPaymentMethod && !paidByGiftcard) ||
-                (isStripeLike(selectedPaymentMethod) && !cardComplete)
-              }
-              className="inline-flex min-h-[52px] w-full items-center justify-center bg-black px-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[var(--color-rose-dark)] disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
-              data-testid="prepare-payment-button"
+              disabled
+              className="inline-flex min-h-[52px] w-full cursor-not-allowed items-center justify-center bg-neutral-200 px-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-400"
             >
-              {isLoading ? "Preparando..." : "Preparar pago"}
+              Acepta los términos para continuar
             </button>
           )}
         </div>

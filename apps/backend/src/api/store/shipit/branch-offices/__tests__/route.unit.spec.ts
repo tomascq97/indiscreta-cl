@@ -1,7 +1,5 @@
-﻿import {
-  deduplicateBranchOffices,
-  parsePositiveIntegerQuery,
-} from "../route";
+import { deduplicateBranchOffices } from "../../../../../lib/shipit/branch-offices";
+import { parsePositiveIntegerQuery } from "../route";
 
 describe("Shipit branch offices route helpers", () => {
   describe("parsePositiveIntegerQuery", () => {
@@ -190,4 +188,3 @@ describe("Shipit branch offices route helpers", () => {
     });
   });
 });
-

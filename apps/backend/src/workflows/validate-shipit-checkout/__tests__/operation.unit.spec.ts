@@ -12,7 +12,7 @@ describe("Shipit pre-Webpay gate", () => {
     },
   };
 
-  it("accepts the current gross quote", () => {
+  it("accepts the current gross tax-inclusive quote exposed to Medusa", () => {
     expect(() =>
       assertShipitCheckoutQuote({
         methods: [method],

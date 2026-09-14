@@ -1,4 +1,4 @@
-import { retrieveCart } from "@lib/data/cart"
+﻿import { retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
 import CheckoutForm from "@modules/checkout/templates/checkout-form"
@@ -14,15 +14,13 @@ export const metadata: Metadata = {
 const checkoutSteps = [
   { number: "01", label: "Dirección" },
   { number: "02", label: "Despacho" },
-  { number: "03", label: "Revisión" },
-  { number: "04", label: "Pago" },
+  { number: "03", label: "Pago" },
 ]
 
 const checkoutStepIndex: Record<string, number> = {
   address: 0,
   delivery: 1,
-  review: 2,
-  payment: 3,
+  payment: 2,
 }
 
 export default async function Checkout({
@@ -56,13 +54,14 @@ export default async function Checkout({
               <h1 className="text-3xl font-extrabold uppercase tracking-[-0.04em] sm:text-4xl">
                 Checkout
               </h1>
+
               <p className="mt-3 max-w-xl text-sm leading-6 text-white/65">
                 Completa tus datos, selecciona el despacho y confirma tu medio
                 de pago.
               </p>
             </div>
 
-            <ol className="grid grid-cols-4 gap-2 sm:gap-5">
+            <ol className="grid grid-cols-3 gap-3 sm:gap-5">
               {checkoutSteps.map((checkoutStep, index) => {
                 const isActive = index === activeStepIndex
                 const isCompleted = index < activeStepIndex
@@ -70,21 +69,44 @@ export default async function Checkout({
                 return (
                   <li
                     key={checkoutStep.number}
-                    className={`border-t pt-3 transition-colors ${
-                      isActive
-                        ? "border-[var(--color-rose)] text-white"
-                        : isCompleted
-                          ? "border-[var(--color-rose)] text-white/80"
-                          : "border-white/20 text-white/45"
+                    className={`min-w-[92px] border-t pt-3 transition-colors ${
+                      isActive || isCompleted
+                        ? "border-[var(--color-rose)]"
+                        : "border-white/20"
                     }`}
                   >
-                    <span className="block text-[9px] font-semibold tracking-[0.14em]">
-                      {isCompleted ? "✓" : checkoutStep.number}
+                    <span
+                      className={`block text-[10px] font-semibold tracking-[0.18em] ${
+                        isActive || isCompleted
+                          ? "text-[var(--color-rose)]"
+                          : "text-white/40"
+                      }`}
+                    >
+                      {checkoutStep.number}
                     </span>
 
-                    <span className="mt-1 block text-[9px] font-semibold uppercase tracking-[0.08em] sm:text-[10px]">
-                      {checkoutStep.label}
-                    </span>
+                    <div className="mt-1 flex items-center gap-2">
+                      {isCompleted ? (
+                        <span
+                          className="text-[11px] font-semibold text-white"
+                          aria-hidden="true"
+                        >
+                          ✓
+                        </span>
+                      ) : null}
+
+                      <span
+                        className={`text-[9px] font-semibold uppercase tracking-[0.08em] sm:text-[10px] ${
+                          isActive
+                            ? "text-white"
+                            : isCompleted
+                              ? "text-white/80"
+                              : "text-white/40"
+                        }`}
+                      >
+                        {checkoutStep.label}
+                      </span>
+                    </div>
                   </li>
                 )
               })}

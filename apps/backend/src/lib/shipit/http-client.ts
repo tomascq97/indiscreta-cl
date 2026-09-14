@@ -23,6 +23,7 @@ export class ShipitHttpClient {
     path: string;
     method?: "GET" | "POST" | "PATCH" | "PUT";
     body?: unknown;
+    accept?: "application/json" | "application/vnd.shipit.v4";
     schema: z.ZodType<T>;
   }): Promise<T> {
     const url = new URL(input.path, `${input.baseUrl}/`);
@@ -56,6 +57,7 @@ export class ShipitHttpClient {
     url: URL;
     method: "GET" | "POST" | "PATCH" | "PUT";
     body?: unknown;
+    accept?: "application/json" | "application/vnd.shipit.v4";
     schema: z.ZodType<T>;
   }): Promise<T> {
     const controller = new AbortController();
@@ -67,7 +69,7 @@ export class ShipitHttpClient {
       const response = await this.fetcher(input.url, {
         method: input.method,
         headers: {
-          Accept: "application/vnd.shipit.v4",
+          Accept: input.accept ?? "application/vnd.shipit.v4",
           "Content-Type": "application/json",
           "X-Shipit-Email": this.configuration.email,
           "X-Shipit-Access-Token": this.configuration.accessToken,

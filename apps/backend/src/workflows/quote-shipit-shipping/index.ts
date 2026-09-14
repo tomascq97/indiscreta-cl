@@ -16,12 +16,18 @@ import {
 
 import { validateBackendEnvironment } from "../../lib/env";
 import { createShipitCatalogCache } from "../../lib/shipit/catalog-cache";
-import { ShipitApiClient } from "../../lib/shipit/clients";
+import { ShipitApiClient, ShipitPricesClient } from "../../lib/shipit/clients";
 import { SHIPIT_MODULE } from "../../modules/shipit";
 import type ShipitModuleService from "../../modules/shipit/service";
-import { quoteShipitShippingOperation } from "./operation";
+import {
+  quoteShipitShippingOperation,
+  type ShipitQuoteSelection,
+} from "./operation";
 
-export type QuoteShipitShippingInput = { cartId: string };
+export type QuoteShipitShippingInput = {
+  cartId: string;
+  selection?: ShipitQuoteSelection;
+};
 
 const quoteShipitShippingStep = createStep(
   "quote-shipit-shipping",
@@ -38,6 +44,7 @@ const quoteShipitShippingStep = createStep(
       {
         query: container.resolve(ContainerRegistrationKeys.QUERY),
         api: new ShipitApiClient(configuration),
+        prices: new ShipitPricesClient(configuration),
         cache: createShipitCatalogCache(
           container.resolve<ICachingModuleService>(Modules.CACHING),
         ),

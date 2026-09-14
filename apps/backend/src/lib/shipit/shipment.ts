@@ -2,13 +2,21 @@ import { createHash } from "node:crypto";
 
 import type { ShipitConfiguration } from "../env";
 import type { ShipitApiClient, ShipitPricesClient } from "./clients";
+import {
+  findCanonicalBranchOffice,
+} from "./branch-offices";
 import { shipitShipmentRequestSchema } from "./contracts";
 import { ShipitError } from "./errors";
 
 type ShipmentData = {
   courier?: unknown;
+  courier_id?: unknown;
+  destination_kind?: unknown;
   destination_commune_id?: unknown;
   destination_commune_name?: unknown;
+  branch_office_id?: unknown;
+  branch_office_name?: unknown;
+  branch_office_address?: unknown;
   parcel?: unknown;
 };
 
@@ -20,8 +28,17 @@ function requiredString(value: unknown, field: string) {
   );
 }
 
-export function createShipitReference(orderId: string) {
-  return `I${createHash("sha256").update(orderId).digest("hex").slice(0, 14)}`;
+export function createShipitReference(
+  orderId: string,
+  sandbox = false,
+) {
+  const hash = createHash("sha256")
+    .update(orderId)
+    .digest("hex");
+
+  return sandbox
+    ? `TEST-${hash.slice(0, 10)}`
+    : `I${hash.slice(0, 14)}`;
 }
 
 export function splitStreetAndNumber(address: string) {
@@ -35,9 +52,49 @@ export function splitStreetAndNumber(address: string) {
   return { street: match[1].trim(), number: match[2] };
 }
 
+export function splitBranchOfficeAddress(address: string) {
+  const normalized = address
+    .trim()
+    .replace(/\s+/g, " ");
+
+  /*
+   * Shipit puede devolver sucursales en formatos como:
+   *
+   *   "Maipu 583"
+   *   "maipu - 583 - local 1"
+   *   "avenida espana - 12 -"
+   *
+   * Para el shipment necesitamos solamente calle + n?mero.
+   * El branch_office_id sigue siendo la identidad autoritativa
+   * de la sucursal.
+   */
+  const dashed = normalized.match(
+    /^(.*?)\s*-\s*([0-9]+(?:[-A-Za-z0-9]*)?)(?:\s*-.*)?$/,
+  );
+
+  if (dashed?.[1] && dashed[2]) {
+    return {
+      street: dashed[1].trim(),
+      number: dashed[2].trim(),
+    };
+  }
+
+  return splitStreetAndNumber(normalized);
+}
+
+function isShipmentNotFoundError(error: unknown) {
+  return (
+    error instanceof ShipitError &&
+    error.code === "REQUEST_FAILED" &&
+    error.status === 404
+  );
+}
 export async function createIdempotentShipitShipment(input: {
   api: Pick<ShipitApiClient, "shipmentByReference" | "createShipment">;
-  prices: Pick<ShipitPricesClient, "couriers">;
+  prices: Pick<
+    ShipitPricesClient,
+    "couriers" | "branchOffices"
+  >;
   configuration: ShipitConfiguration;
   data: ShipmentData;
   order: {
@@ -53,31 +110,77 @@ export async function createIdempotentShipitShipment(input: {
   };
 }) {
   const orderId = requiredString(input.order.id, "order ID");
-  const reference = createShipitReference(orderId);
+  const reference = createShipitReference(
+    orderId,
+    input.configuration.sandbox,
+  );
 
   try {
     return await input.api.shipmentByReference(reference);
-  } catch {
-    // A missing shipment is expected before its first creation.
+  } catch (error) {
+    if (!isShipmentNotFoundError(error)) {
+      throw error;
+    }
+
+    // Only an unequivocal HTTP 404 allows first-time creation.
   }
 
   const address = input.order.shipping_address;
+
   const fullName = [address?.first_name, address?.last_name]
     .filter(Boolean)
     .join(" ")
     .trim();
-  const { street, number } = splitStreetAndNumber(
-    requiredString(address?.address_1, "shipping address"),
+
+  const destinationKind =
+    input.data.destination_kind === "courier_branch_office"
+      ? "courier_branch_office"
+      : "home_delivery";
+
+  const courierName = requiredString(
+    input.data.courier,
+    "courier",
   );
-  const courierName = requiredString(input.data.courier, "courier");
+
   const couriers = await input.prices.couriers();
-  const courier = couriers.find(
+
+  let courier = couriers.find(
     (candidate) =>
       candidate.available_to_ship &&
       candidate.name.localeCompare(courierName, "es", {
         sensitivity: "base",
       }) === 0,
   );
+
+  if (destinationKind === "courier_branch_office") {
+    const courierId = Number(input.data.courier_id);
+
+    if (!Number.isSafeInteger(courierId) || courierId <= 0) {
+      throw new ShipitError(
+        "INVALID_RESPONSE",
+        "Missing courier_id for Shipit branch-office shipment",
+      );
+    }
+
+    courier = couriers.find(
+      (candidate) =>
+        candidate.id === courierId &&
+        candidate.available_to_ship,
+    );
+
+    if (
+      !courier ||
+      courier.name.localeCompare(courierName, "es", {
+        sensitivity: "base",
+      }) !== 0
+    ) {
+      throw new ShipitError(
+        "INVALID_RESPONSE",
+        "Quoted Shipit courier is unavailable",
+      );
+    }
+  }
+
   if (!courier) {
     throw new ShipitError(
       "INVALID_RESPONSE",
@@ -85,7 +188,80 @@ export async function createIdempotentShipitShipment(input: {
     );
   }
 
-  const parcel = input.data.parcel as Record<string, unknown> | undefined;
+  const destinationCommuneId = Number(
+    input.data.destination_commune_id,
+  );
+
+  if (
+    !Number.isSafeInteger(destinationCommuneId) ||
+    destinationCommuneId <= 0
+  ) {
+    throw new ShipitError(
+      "INVALID_RESPONSE",
+      "Missing destination commune for Shipit shipment",
+    );
+  }
+
+  let street: string;
+  let number: string;
+  let complement: string | undefined;
+  let branchOfficeId: number | undefined;
+
+  if (destinationKind === "courier_branch_office") {
+    const selectedBranchOfficeId = Number(
+      input.data.branch_office_id,
+    );
+
+    if (
+      !Number.isSafeInteger(selectedBranchOfficeId) ||
+      selectedBranchOfficeId <= 0
+    ) {
+      throw new ShipitError(
+        "INVALID_RESPONSE",
+        "Missing branch_office_id for Shipit shipment",
+      );
+    }
+
+    const branches = await input.prices.branchOffices(
+      courier.id,
+    );
+
+    const branch = findCanonicalBranchOffice({
+      branches,
+      courierId: courier.id,
+      communeId: destinationCommuneId,
+      branchOfficeId: selectedBranchOfficeId,
+    });
+
+    if (!branch) {
+      throw new ShipitError(
+        "INVALID_RESPONSE",
+        "Quoted Shipit branch office is unavailable",
+      );
+    }
+
+    ({ street, number } = splitBranchOfficeAddress(
+      branch.address,
+    ));
+
+    complement = branch.name;
+    branchOfficeId = branch.id;
+  } else {
+    ({ street, number } = splitStreetAndNumber(
+      requiredString(
+        address?.address_1,
+        "shipping address",
+      ),
+    ));
+
+    complement = address?.address_2 || undefined;
+  }
+
+  const parcel =
+    input.data.parcel as
+      | Record<string, unknown>
+      | undefined;
+
   const request = shipitShipmentRequestSchema.parse({
     kind: 0,
     platform: 2,
@@ -93,13 +269,19 @@ export async function createIdempotentShipitShipment(input: {
     destiny: {
       street,
       number,
-      complement: address?.address_2 || undefined,
-      commune_id: input.data.destination_commune_id,
+      complement,
+      commune_id: destinationCommuneId,
       commune_name: input.data.destination_commune_name,
       full_name: fullName,
       email: input.order.email || undefined,
       phone: address?.phone || undefined,
-      kind: "home_delivery",
+      kind: destinationKind,
+      ...(branchOfficeId
+        ? {
+            courier_branch_office_id:
+              branchOfficeId,
+          }
+        : {}),
     },
     sizes: {
       length: parcel?.length_cm,

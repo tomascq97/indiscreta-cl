@@ -1,14 +1,33 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
-import { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../../modules/shipit-fulfillment/service";
+import {
+  buildShipitQuoteSelection,
+  SHIPIT_FULFILLMENT_PROVIDER_ID,
+} from "../../modules/shipit-fulfillment/service";
 import { quoteShipitShippingWorkflow } from "../quote-shipit-shipping";
 import { assertShipitCheckoutQuote } from "./operation";
+
+type ShipitCheckoutSelection =
+  ReturnType<typeof buildShipitQuoteSelection>;
+
+type ShipitCheckoutCurrentQuote =
+  Parameters<
+    typeof assertShipitCheckoutQuote
+  >[0]["current"];
+
+type ShipitCheckoutQuoteRunner = (input: {
+  cartId: string;
+  selection: ShipitCheckoutSelection;
+}) => Promise<ShipitCheckoutCurrentQuote>;
 
 export async function validateShipitCheckoutBeforeWebpay(
   container: {
     resolve<T>(key: string): T;
   },
   cartId: string,
+  dependencies: {
+    quote?: ShipitCheckoutQuoteRunner;
+  } = {},
 ) {
   const query = container.resolve<{
     graph(input: Record<string, unknown>): Promise<{ data: unknown[] }>;
@@ -39,8 +58,33 @@ export async function validateShipitCheckoutBeforeWebpay(
   ) {
     return;
   }
-  const { result } = await quoteShipitShippingWorkflow(container as never).run({
-    input: { cartId },
+  const methodData = methods[0]?.data ?? {};
+
+  const selection = buildShipitQuoteSelection(
+    methodData,
+    methodData,
+  );
+
+  const quote: ShipitCheckoutQuoteRunner =
+    dependencies.quote ??
+    (async (input) => {
+      const { result } =
+        await quoteShipitShippingWorkflow(
+          container as never,
+        ).run({
+          input,
+        });
+
+      return result;
+    });
+
+  const current = await quote({
+    cartId,
+    selection,
   });
-  assertShipitCheckoutQuote({ methods, current: result });
+
+  assertShipitCheckoutQuote({
+    methods,
+    current,
+  });
 }

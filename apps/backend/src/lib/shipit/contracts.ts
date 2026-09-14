@@ -166,6 +166,13 @@ export const shipitShipmentResponseSchema = z
   })
   .passthrough();
 
+export const shipitShipmentLookupResponseSchema = z
+  .object({
+    shipments: z.array(shipitShipmentResponseSchema),
+    total: z.number().int().nonnegative().optional(),
+  })
+  .passthrough();
+
 export const shipitTrackingResponseSchema = z
   .object({
     number: z.string().optional(),

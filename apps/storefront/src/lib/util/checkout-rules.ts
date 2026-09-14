@@ -14,7 +14,7 @@ type CheckoutCart = {
   gift_cards?: unknown[] | null
 }
 
-export type CheckoutStep = "address" | "delivery" | "payment" | "review"
+export type CheckoutStep = "address" | "delivery" | "payment"
 
 const addressFields = [
   "first_name",
@@ -75,13 +75,6 @@ export const isPaymentReady = (cart: CheckoutCart) =>
     isPaidByGiftCard(cart),
   )
 
-export const isReviewReady = (cart: CheckoutCart) =>
-  Boolean(
-    cart.shipping_address &&
-    cart.shipping_methods?.length &&
-    (hasPendingPaymentSession(cart) || isPaidByGiftCard(cart)),
-  )
-
 export const isOrderReady = (cart: CheckoutCart) =>
   Boolean(
     cart.shipping_address &&
@@ -99,10 +92,5 @@ export const getCheckoutStep = (cart: CheckoutCart): CheckoutStep => {
   if (!cart.shipping_methods?.length) {
     return "delivery"
   }
-
-  if (hasPendingPaymentSession(cart) || isPaidByGiftCard(cart)) {
-    return "review"
-  }
-
-  return "payment"
+return "payment"
 }

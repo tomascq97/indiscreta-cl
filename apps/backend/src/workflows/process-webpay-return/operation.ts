@@ -71,7 +71,7 @@ export type ProcessWebpayReturnDependencies = {
   transaction: Transaction;
   completeCart(
     cartId: string,
-  ): Promise<{ id?: string; order?: { id: string } }>;
+  ): Promise<{ id?: string; order?: { id: string }; total?: number }>;
   logger: Logger;
 };
 
@@ -222,6 +222,30 @@ async function reconcileMedusa(
           MedusaError.Types.UNEXPECTED_STATE,
           "Order was not created",
         );
+      }
+
+      const orderTotal = Number(result.total);
+
+      if (
+        !Number.isFinite(orderTotal) ||
+        orderTotal !== Number(current.amount)
+      ) {
+        dependencies.logger.error(
+          JSON.stringify({
+            event: "webpay.order.amount_mismatch",
+            attempt_id: current.id,
+            order_id: orderId,
+            payment_amount: Number(current.amount),
+            order_total: Number.isFinite(orderTotal) ? orderTotal : null,
+          }),
+        );
+
+        return dependencies.webpayService.updateWebpayAttempts({
+          id: current.id,
+          state: "manual_review",
+          order_id: orderId,
+          failure_code: "order_amount_mismatch",
+        });
       }
 
       current = await dependencies.webpayService.updateWebpayAttempts({

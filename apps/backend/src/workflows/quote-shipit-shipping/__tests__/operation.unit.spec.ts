@@ -21,7 +21,7 @@ const configuration: ShipitConfiguration = {
 };
 
 describe("Shipit mocked checkout flow", () => {
-  it("selects the cheapest rate, adds IVA and passes the Webpay gate", async () => {
+  it("stores IVA audit data, exposes the gross tax-inclusive rate to Medusa, and passes the Webpay gate", async () => {
     const cacheValues = new Map<string, unknown>();
     const create = jest.fn(async (data: Record<string, unknown>) => ({
       id: "shq_1",
@@ -77,6 +77,10 @@ describe("Shipit mocked checkout flow", () => {
           },
         },
         locking: { execute: async (_key, job) => job() },
+        prices: {
+          couriers: async () => [] as never,
+          branchOffices: async () => [] as never,
+        },
         api: {
           communes: async () =>
             [

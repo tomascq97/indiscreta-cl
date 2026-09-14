@@ -16,40 +16,67 @@ export type ShipitRateCandidate = {
   } | null;
 };
 
-export function selectEligibleShipitRates(input: {
+type ShipitRateSelectionInput = {
   rates: ShipitRateCandidate[];
   communeId: number;
   destinationKind: string;
-}): ShipitRateCandidate[] {
-  const eligible = input.rates.filter(
-    (rate) => {
-      const destiny = rate.destiny
-      const destinationMatches = destiny
-        ? destiny.available &&
-          destiny.commune_id === input.communeId &&
-          destiny.type_of_destiny.toLowerCase() ===
-            input.destinationKind.toLowerCase()
-        : input.destinationKind.toLowerCase() === "domicilio"
-      return (
-        rate.available_to_shipping &&
-        destinationMatches &&
-        Number.isSafeInteger(rate.price) &&
-        rate.price >= 0
-      )
-    },
-  );
+  courier?: string;
+};
+
+function normalizeCourier(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export function selectEligibleShipitRates(
+  input: ShipitRateSelectionInput,
+): ShipitRateCandidate[] {
+  const expectedDestinationKind = input.destinationKind.toLowerCase();
+  const expectedCourier = input.courier
+    ? normalizeCourier(input.courier)
+    : null;
+
+  const eligible = input.rates.filter((rate) => {
+    const destiny = rate.destiny;
+
+    const courierMatches =
+      !expectedCourier ||
+      normalizeCourier(rate.original_courier) === expectedCourier ||
+      normalizeCourier(rate.courier.name) === expectedCourier;
+
+    const destinationMatches = destiny
+      ? destiny.available &&
+        destiny.commune_id === input.communeId &&
+        destiny.type_of_destiny.toLowerCase() === expectedDestinationKind
+      : expectedDestinationKind === "domicilio" ||
+        (expectedDestinationKind === "courier_branch_office" &&
+          expectedCourier !== null);
+
+    return (
+      rate.available_to_shipping &&
+      courierMatches &&
+      destinationMatches &&
+      Number.isSafeInteger(rate.price) &&
+      rate.price >= 0
+    );
+  });
+
   const unique = new Map<string, ShipitRateCandidate>();
+
   for (const rate of eligible) {
     const key = [
       rate.original_courier,
       rate.name,
       rate.destiny?.id ?? input.communeId,
-      rate.destiny?.courier_branch_office_id ?? "home",
+      rate.destiny?.courier_branch_office_id ?? "none",
       rate.price,
       rate.days,
     ].join(":");
-    if (!unique.has(key)) unique.set(key, rate);
+
+    if (!unique.has(key)) {
+      unique.set(key, rate);
+    }
   }
+
   return [...unique.values()].sort(
     (left, right) =>
       left.price - right.price ||
@@ -60,17 +87,22 @@ export function selectEligibleShipitRates(input: {
 }
 
 export function requireEligibleShipitRates(
-  input: Parameters<typeof selectEligibleShipitRates>[0],
+  input: ShipitRateSelectionInput,
 ) {
   const rates = selectEligibleShipitRates(input);
+
   if (!rates.length) {
-    throw new ShipitError("INVALID_RESPONSE", "No eligible Shipit rates");
+    throw new ShipitError(
+      "INVALID_RESPONSE",
+      "No eligible Shipit rates",
+    );
   }
+
   return rates;
 }
 
 export function selectCheapestShipitRate(
-  input: Parameters<typeof selectEligibleShipitRates>[0],
+  input: ShipitRateSelectionInput,
 ): ShipitRateCandidate {
   return requireEligibleShipitRates(input)[0];
 }

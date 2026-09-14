@@ -268,7 +268,7 @@ export default async function initial_data_seed({
       ...(process.env.SHIPIT_ENABLED === "true"
         ? [
             {
-              name: "Shipit domicilio económico",
+              name: "Shipit domicilio economico",
               price_type: "calculated" as const,
               provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
               service_zone_id: fulfillmentSet.service_zones[0].id,
@@ -282,6 +282,35 @@ export default async function initial_data_seed({
                 label: "Shipit domicilio",
                 description: "Despacho a domicilio mediante Shipit.",
                 code: "shipit-home-economy",
+              },
+              rules: [
+                {
+                  attribute: "enabled_in_store",
+                  value: "true",
+                  operator: "eq" as const,
+                },
+                {
+                  attribute: "is_return",
+                  value: "false",
+                  operator: "eq" as const,
+                },
+              ],
+            },
+            {
+              name: "Shipit retiro en sucursal",
+              price_type: "calculated" as const,
+              provider_id: SHIPIT_FULFILLMENT_PROVIDER_ID,
+              service_zone_id: fulfillmentSet.service_zones[0].id,
+              shipping_profile_id: shippingProfile.id,
+              data: {
+                id: "shipit-branch-office",
+                destination_kind: "courier_branch_office",
+                selection_policy: "selected-branch-v1",
+              },
+              type: {
+                label: "Shipit sucursal",
+                description: "Retiro en sucursal de courier mediante Shipit.",
+                code: "shipit-branch-office",
               },
               rules: [
                 {

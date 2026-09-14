@@ -11,6 +11,7 @@ import {
   shipitTrackingResponseSchema,
   type ShipitRateRequest,
   type ShipitShipmentRequest,
+  shipitShipmentLookupResponseSchema,
 } from "./contracts";
 import { ShipitError } from "./errors";
 import { ShipitHttpClient } from "./http-client";
@@ -39,12 +40,48 @@ export class ShipitApiClient {
     });
   }
 
-  shipmentByReference(reference: string) {
-    return this.http.request({
-      baseUrl: this.configuration.apiBaseUrl,
-      path: `/v/shipments/reference/${encodeURIComponent(reference)}`,
-      schema: shipitShipmentResponseSchema,
-    });
+  async shipmentByReference(reference: string) {
+    const response = await (async () => {
+      try {
+        // Shipit's vendor representation is authoritative for existing shipments.
+        return await this.http.request({
+          baseUrl: this.configuration.apiBaseUrl,
+          path: `/v/shipments/reference/${encodeURIComponent(reference)}`,
+          schema: shipitShipmentLookupResponseSchema,
+        });
+      } catch (error) {
+        const shouldProbeJsonNotFound =
+          error instanceof ShipitError &&
+          error.code === "REQUEST_FAILED" &&
+          error.status === 400;
+
+        if (!shouldProbeJsonNotFound) {
+          throw error;
+        }
+
+        // Shipit returns 400 with the vendor representation for a missing
+        // reference, but an unequivocal 404 with application/json.
+        return this.http.request({
+          baseUrl: this.configuration.apiBaseUrl,
+          path: `/v/shipments/reference/${encodeURIComponent(reference)}`,
+          accept: "application/json",
+          schema: shipitShipmentLookupResponseSchema,
+        });
+      }
+    })();
+
+    const shipment = response.shipments.find(
+      (candidate) => candidate.reference === reference,
+    );
+
+    if (!shipment) {
+      throw new ShipitError(
+        "INVALID_RESPONSE",
+        "Shipit shipment lookup returned no matching shipment",
+      );
+    }
+
+    return shipment;
   }
 
   createShipment(request: ShipitShipmentRequest) {

@@ -26,7 +26,7 @@ import { formatChileanRut, isValidChileanRut } from "@lib/util/chilean-rut"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *metadata, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *metadata, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, +shipping_methods.data"
 
   if (!id) {
     return null
@@ -61,7 +61,12 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
+
+  if (cart?.completed_at) {
+    await removeCartId()
+    cart = null
+  }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -222,16 +227,26 @@ export async function deleteLineItem(lineId: string) {
 export async function setShippingMethod({
   cartId,
   shippingMethodId,
+  data,
 }: {
   cartId: string
   shippingMethodId: string
+  data?: Record<string, unknown>
 }) {
   const headers = {
     ...(await getAuthHeaders()),
   }
 
   return sdk.store.cart
-    .addShippingMethod(cartId, { option_id: shippingMethodId }, {}, headers)
+    .addShippingMethod(
+      cartId,
+      {
+        option_id: shippingMethodId,
+        ...(data ? { data } : {}),
+      },
+      {},
+      headers
+    )
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
@@ -413,7 +428,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 
     const rut = String(formData.get("customer_rut") ?? "")
     if (!isValidChileanRut(rut)) {
-      throw new Error("Ingresa un RUT chileno válido")
+      throw new Error("Ingresa un RUT chileno vÃƒÂ¡lido")
     }
 
     await updateCart({

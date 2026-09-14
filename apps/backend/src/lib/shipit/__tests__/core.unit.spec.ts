@@ -80,6 +80,28 @@ describe("Shipit B1 core", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
+  it("allows a request-specific Accept header without changing the default", async () => {
+    const fetcher = jest.fn(async (_url: URL, init?: RequestInit) => {
+      expect(init?.headers).toMatchObject({
+        Accept: "application/json",
+        "X-Shipit-Email": configuration.email,
+        "X-Shipit-Access-Token": configuration.accessToken,
+      });
+
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const client = new ShipitHttpClient(configuration, fetcher);
+
+    await expect(
+      client.request({
+        baseUrl: configuration.apiBaseUrl,
+        path: "/v/example",
+        accept: "application/json",
+        schema: z.object({ ok: z.boolean() }),
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
   it("rejects untrusted origins before sending credentials", async () => {
     const fetcher = jest.fn() as unknown as typeof fetch;
     const client = new ShipitHttpClient(configuration, fetcher);
