@@ -12,7 +12,7 @@ import PaymentContainer, {
   StripeCardContainer,
 } from "@modules/checkout/components/payment-container"
 import { RadioGroup } from "@headlessui/react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { selectActivePaymentSession } from "@lib/util/payment-session"
 
@@ -41,7 +41,6 @@ const Payment = ({
 
   const searchParams = useSearchParams()
   const router = useRouter()
-  const pathname = usePathname()
   const isOpen = searchParams.get("step") === "payment"
 
   const paidByGiftcard = isPaidByGiftCard(cart)

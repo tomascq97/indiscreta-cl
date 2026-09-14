@@ -15,9 +15,8 @@ import { convertToLocale } from "@lib/util/money"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
-import Divider from "@modules/common/components/divider"
 import MedusaRadio from "@modules/common/components/radio"
-import { Button, clx, Heading, Text } from "@modules/common/components/ui"
+import { Button, clx, Heading } from "@modules/common/components/ui"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
@@ -113,8 +112,7 @@ const Shipping: React.FC<ShippingProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPrices, setIsLoadingPrices] = useState(true)
-  const [showPickupOptions, setShowPickupOptions] =
-    useState<string>(PICKUP_OPTION_OFF)
+  const [, setShowPickupOptions] = useState<string>(PICKUP_OPTION_OFF)
 
   const [calculatedPricesMap, setCalculatedPricesMap] = useState<
     Record<string, number>
@@ -625,6 +623,7 @@ const Shipping: React.FC<ShippingProps> = ({
     searchedBranches,
     branches,
     cart.id,
+    branchQuoteStatus,
   ])
   const handleEdit = () => {
     router.push(pathname + "?step=delivery", { scroll: false })
