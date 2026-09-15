@@ -341,9 +341,9 @@ describe("Shipit fulfillment provider", () => {
       }
 
       throw new Error(`Unexpected Shipit HTTP request: ${url}`);
-    }) as unknown as typeof fetch;
+    });
 
-    global.fetch = fetchMock;
+    global.fetch = fetchMock as unknown as typeof fetch;
 
     const service = new ShipitFulfillmentProviderService({
       caching,
