@@ -9,9 +9,14 @@ import type {
   IFulfillmentProvider,
   ValidateFulfillmentDataContext,
 } from "@medusajs/framework/types";
-import { MedusaError } from "@medusajs/framework/utils";
+import type { ICachingModuleService } from "@medusajs/framework/types";
+import { MedusaError, Modules } from "@medusajs/framework/utils";
 
 import { validateBackendEnvironment } from "../../lib/env";
+import {
+  createShipitCatalogCache,
+  loadCachedShipitCatalog,
+} from "../../lib/shipit/catalog-cache";
 import { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../../lib/shipit/constants";
 export { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../../lib/shipit/constants";
 import { ShipitApiClient, ShipitPricesClient } from "../../lib/shipit/clients";
@@ -201,15 +206,39 @@ class ShipitFulfillmentProviderService
 
     const api = new ShipitApiClient(configuration);
     const prices = new ShipitPricesClient(configuration);
+    const cache = createShipitCatalogCache(
+      (
+        this.container as {
+          resolve<T>(name: string): T;
+        }
+      ).resolve<ICachingModuleService>(Modules.CACHING),
+    );
 
     return calculateShipitShippingQuote(
       {
         api,
         configuration,
-        loadCommunes: () => api.communes(),
-        loadCouriers: () => prices.couriers(),
+        loadCommunes: () =>
+          loadCachedShipitCatalog({
+            cache,
+            key: "communes",
+            ttlSeconds: configuration.catalogCacheTtlSeconds,
+            load: () => api.communes(),
+          }),
+        loadCouriers: () =>
+          loadCachedShipitCatalog({
+            cache,
+            key: "couriers",
+            ttlSeconds: configuration.catalogCacheTtlSeconds,
+            load: () => prices.couriers(),
+          }),
         loadBranchOffices: (courierId) =>
-          prices.branchOffices(courierId),
+          loadCachedShipitCatalog({
+            cache,
+            key: `branch-offices:${courierId}`,
+            ttlSeconds: configuration.catalogCacheTtlSeconds,
+            load: () => prices.branchOffices(courierId),
+          }),
       },
       {
         ...(context as ShipitQuoteCart),
