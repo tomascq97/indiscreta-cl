@@ -12,6 +12,11 @@ import type {
 import { MedusaError } from "@medusajs/framework/utils";
 
 import { validateBackendEnvironment } from "../../lib/env";
+import {
+  createShipitCatalogCache,
+  loadCachedShipitCatalog,
+  type MedusaCachingService,
+} from "../../lib/shipit/catalog-cache";
 import { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../../lib/shipit/constants";
 export { SHIPIT_FULFILLMENT_PROVIDER_ID } from "../../lib/shipit/constants";
 import { ShipitApiClient, ShipitPricesClient } from "../../lib/shipit/clients";
@@ -180,7 +185,9 @@ class ShipitFulfillmentProviderService
   static identifier = "shipit";
 
   constructor(
-    private readonly container: Record<string, unknown>,
+    private readonly container: {
+      caching?: MedusaCachingService;
+    },
   ) {}
 
   private async quote(
@@ -201,15 +208,41 @@ class ShipitFulfillmentProviderService
 
     const api = new ShipitApiClient(configuration);
     const prices = new ShipitPricesClient(configuration);
+    const cache = this.container.caching
+      ? createShipitCatalogCache(this.container.caching)
+      : undefined;
 
     return calculateShipitShippingQuote(
       {
         api,
         configuration,
-        loadCommunes: () => api.communes(),
-        loadCouriers: () => prices.couriers(),
+        loadCommunes: () =>
+          cache
+            ? loadCachedShipitCatalog({
+                cache,
+                key: "communes",
+                ttlSeconds: configuration.catalogCacheTtlSeconds,
+                load: () => api.communes(),
+              })
+            : api.communes(),
+        loadCouriers: () =>
+          cache
+            ? loadCachedShipitCatalog({
+                cache,
+                key: "couriers",
+                ttlSeconds: configuration.catalogCacheTtlSeconds,
+                load: () => prices.couriers(),
+              })
+            : prices.couriers(),
         loadBranchOffices: (courierId) =>
-          prices.branchOffices(courierId),
+          cache
+            ? loadCachedShipitCatalog({
+                cache,
+                key: `branch-offices:${courierId}`,
+                ttlSeconds: configuration.catalogCacheTtlSeconds,
+                load: () => prices.branchOffices(courierId),
+              })
+            : prices.branchOffices(courierId),
       },
       {
         ...(context as ShipitQuoteCart),
