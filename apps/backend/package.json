@@ -19,7 +19,7 @@
     "start:worker": "cross-env MEDUSA_WORKER_MODE=worker medusa start",
     "start:shared": "cross-env MEDUSA_WORKER_MODE=shared medusa start",
     "dev": "medusa develop",
-    "seed": "medusa exec ./src/migration-scripts/initial-data-seed.ts",
+    "seed": "medusa exec ./src/scripts/initial-data-seed.ts",
     "lint": "medusa lint",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run test:unit",
