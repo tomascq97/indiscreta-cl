@@ -6,7 +6,7 @@ export default async function auditShippingOptions({ container }: ExecArgs) {
 
   const result = await query.graph({
     entity: "shipping_option",
-    fields: ["id", "name", "provider_id", "price_type", "data"],
+    fields: ["id", "name", "provider_id", "price_type", "data", "service_zone.id", "shipping_profile.id"],
   })
 
   const options = result.data.map((option) => ({
