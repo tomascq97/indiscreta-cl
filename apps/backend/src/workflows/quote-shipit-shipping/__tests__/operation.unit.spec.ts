@@ -142,9 +142,9 @@ describe("Shipit mocked checkout flow", () => {
 
     expect(result).toMatchObject({
       quote_id: "shq_1",
-      calculated_amount: 4760,
+      calculated_amount: 4000,
       net_amount: 4000,
-      tax_amount: 760,
+      tax_amount: 0,
       courier: "economy",
       service: "normal",
       is_calculated_price_tax_inclusive: true,
@@ -152,8 +152,8 @@ describe("Shipit mocked checkout flow", () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         net_price: 4000,
-        tax_amount: 760,
-        price: 4760,
+        tax_amount: 0,
+        price: 4000,
         tax_inclusive: true,
       }),
     );
@@ -164,7 +164,7 @@ describe("Shipit mocked checkout flow", () => {
         methods: [
           {
             id: "sm_1",
-            amount: 4760,
+            amount: 4000,
             data: methodData,
             shipping_option: {
               provider_id: methodData.provider_id,

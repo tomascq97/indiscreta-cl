@@ -6,19 +6,8 @@ import {
   selectCheapestShipitRate,
   selectEligibleShipitRates,
 } from "../rate-selector";
-import { addChileIvaToNetClp } from "../tax";
 
 describe("Shipit quote foundations", () => {
-  it("adds and rounds 19 percent IVA to a net CLP rate", () => {
-    expect(addChileIvaToNetClp(4000)).toEqual({
-      netPrice: 4000,
-      taxAmount: 760,
-      grossPrice: 4760,
-      taxRateBps: 1900,
-      taxInclusive: true,
-    });
-    expect(addChileIvaToNetClp(4001).grossPrice).toBe(4761);
-  });
   it("keeps real dimensions for a single physical unit", () => {
     expect(
       cartItemsToShipitParcel(

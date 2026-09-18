@@ -383,7 +383,7 @@ describe("Shipit fulfillment provider", () => {
         } as never,
       );
 
-      expect(result.calculated_amount).toBe(7869);
+      expect(result.calculated_amount).toBe(6613);
       expect(result.is_calculated_price_tax_inclusive).toBe(true);
 
       expect(caching.get).toHaveBeenCalledWith({

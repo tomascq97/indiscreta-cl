@@ -18,7 +18,7 @@ import {
 } from "../../lib/shipit/quote-request";
 import { createOrReuseShipitQuote } from "../../lib/shipit/quote-reuse";
 import { selectCheapestShipitRate } from "../../lib/shipit/rate-selector";
-import { addChileIvaToNetClp } from "../../lib/shipit/tax";
+
 import { ShipitError } from "../../lib/shipit/errors";
 
 type Query = {
@@ -228,7 +228,13 @@ export async function calculateShipitShippingQuote(
           courier: canonicalCourier!.name,
         });
 
-  const totals = addChileIvaToNetClp(rate.price);
+  const totals = {
+    netPrice: rate.price,
+    taxAmount: 0,
+    grossPrice: rate.price,
+    taxRateBps: 0,
+    taxInclusive: true as const,
+  };
 
   const destinationContext =
     selection.destinationKind === "home_delivery"
@@ -269,7 +275,7 @@ export async function calculateShipitShippingQuote(
     branchOfficeId,
     price: totals.grossPrice,
     days: rate.days,
-    contractVersion: "v4-net-iva19",
+    contractVersion: "v5-shipit-rate-direct",
   });
 
   return {
@@ -381,7 +387,7 @@ export async function quoteShipitShippingOperation(
             dependencies.store.create({
               cart_id: cart.id,
               quote_hash: quoteHash,
-              contract_version: "v4-net-iva19",
+              contract_version: "v5-shipit-rate-direct",
               packing_policy: parcel.packingPolicy,
               origin_commune_id: dependencies.configuration.originCommuneId,
               destination_commune_id: destination.id,
