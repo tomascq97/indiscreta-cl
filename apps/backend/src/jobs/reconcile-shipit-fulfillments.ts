@@ -2,6 +2,7 @@ import type { Logger, MedusaContainer } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
 import { ensureMedusaShipitFulfillment } from "../lib/shipit/ensure-medusa-fulfillment";
+import { persistMedusaShipitFulfillment } from "../lib/shipit/persist-medusa-fulfillment";
 import { WEBPAY_MODULE } from "../modules/webpay";
 import type WebpayModuleService from "../modules/webpay/service";
 
@@ -50,9 +51,23 @@ export default async function reconcileShipitFulfillments(
           attempt.order_id,
         );
 
-        if (result.status === "created") created += 1;
-        else if (result.status === "existing") existing += 1;
-        else skipped += 1;
+        if (result.status === "created") {
+          created += 1;
+
+          await persistMedusaShipitFulfillment(
+            container,
+            result.fulfillment_id,
+          );
+        } else if (result.status === "existing") {
+          existing += 1;
+
+          await persistMedusaShipitFulfillment(
+            container,
+            result.fulfillment_id,
+          );
+        } else {
+          skipped += 1;
+        }
       } catch (error) {
         failed += 1;
 

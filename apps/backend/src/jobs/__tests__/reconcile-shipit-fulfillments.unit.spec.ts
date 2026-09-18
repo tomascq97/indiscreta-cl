@@ -1,13 +1,18 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 
+import { ensureMedusaShipitFulfillment } from "../../lib/shipit/ensure-medusa-fulfillment";
+import { persistMedusaShipitFulfillment } from "../../lib/shipit/persist-medusa-fulfillment";
+import { WEBPAY_MODULE } from "../../modules/webpay";
 import reconcileShipitFulfillments, {
   config,
 } from "../reconcile-shipit-fulfillments";
-import { ensureMedusaShipitFulfillment } from "../../lib/shipit/ensure-medusa-fulfillment";
-import { WEBPAY_MODULE } from "../../modules/webpay";
 
 jest.mock("../../lib/shipit/ensure-medusa-fulfillment", () => ({
   ensureMedusaShipitFulfillment: jest.fn(),
+}));
+
+jest.mock("../../lib/shipit/persist-medusa-fulfillment", () => ({
+  persistMedusaShipitFulfillment: jest.fn(),
 }));
 
 const ensureFulfillmentMock =
@@ -15,7 +20,15 @@ const ensureFulfillmentMock =
     typeof ensureMedusaShipitFulfillment
   >;
 
-function makeAttempt(index: number, orderId: string | null = `order_${index}`) {
+const persistFulfillmentMock =
+  persistMedusaShipitFulfillment as jest.MockedFunction<
+    typeof persistMedusaShipitFulfillment
+  >;
+
+function makeAttempt(
+  index: number,
+  orderId: string | null = `order_${index}`,
+) {
   return {
     id: `attempt_${index}`,
     order_id: orderId,
@@ -57,6 +70,7 @@ describe("reconcileShipitFulfillments job", () => {
     const container = {
       resolve: jest.fn((key: string) => {
         if (key === ContainerRegistrationKeys.LOGGER) return logger;
+
         if (key === WEBPAY_MODULE) {
           return { listWebpayAttempts };
         }
@@ -67,7 +81,13 @@ describe("reconcileShipitFulfillments job", () => {
 
     ensureFulfillmentMock.mockResolvedValue({
       status: "existing",
-    } as never);
+      fulfillment_id: "ful_existing",
+    });
+
+    persistFulfillmentMock.mockResolvedValue({
+      status: "existing",
+      shipment_id: "shs_existing",
+    });
 
     await reconcileShipitFulfillments(container as never);
 
@@ -106,6 +126,7 @@ describe("reconcileShipitFulfillments job", () => {
     const container = {
       resolve: jest.fn((key: string) => {
         if (key === ContainerRegistrationKeys.LOGGER) return logger;
+
         if (key === WEBPAY_MODULE) {
           return { listWebpayAttempts };
         }
@@ -115,18 +136,31 @@ describe("reconcileShipitFulfillments job", () => {
     };
 
     ensureFulfillmentMock
-      .mockResolvedValueOnce({ status: "existing" } as never)
+      .mockResolvedValueOnce({
+        status: "existing",
+        fulfillment_id: "ful_1",
+      })
       .mockRejectedValueOnce(new Error("temporary failure"))
-      .mockResolvedValueOnce({ status: "created" } as never)
+      .mockResolvedValueOnce({
+        status: "created",
+        fulfillment_id: "ful_4",
+      })
       .mockResolvedValueOnce({
         status: "skipped",
         reason: "non_shipit_shipping_method",
-      } as never);
+      });
+
+    persistFulfillmentMock.mockResolvedValue({
+      status: "existing",
+      shipment_id: "shs_existing",
+    });
 
     await reconcileShipitFulfillments(container as never);
 
     expect(ensureFulfillmentMock).toHaveBeenCalledTimes(4);
-    expect(ensureFulfillmentMock.mock.calls.map((call) => call[1])).toEqual([
+    expect(
+      ensureFulfillmentMock.mock.calls.map((call) => call[1]),
+    ).toEqual([
       "order_1",
       "order_3",
       "order_4",
@@ -143,6 +177,52 @@ describe("reconcileShipitFulfillments job", () => {
 
     expect(logger.info).toHaveBeenCalledWith(
       "shipit.reconciliation.completed scanned=5 created=1 existing=1 skipped=1 missing_order_id=1 failed=1",
+    );
+  });
+
+  it("backfills local Shipit persistence for an existing fulfillment", async () => {
+    const listWebpayAttempts = jest.fn().mockResolvedValue([
+      makeAttempt(1),
+    ]);
+
+    const logger = {
+      info: jest.fn(),
+      error: jest.fn(),
+    };
+
+    const container = {
+      resolve: jest.fn((key: string) => {
+        if (key === ContainerRegistrationKeys.LOGGER) return logger;
+
+        if (key === WEBPAY_MODULE) {
+          return { listWebpayAttempts };
+        }
+
+        throw new Error(`Unexpected dependency: ${key}`);
+      }),
+    };
+
+    ensureFulfillmentMock.mockResolvedValue({
+      status: "existing",
+      fulfillment_id: "ful_1",
+    });
+
+    persistFulfillmentMock.mockResolvedValue({
+      status: "created",
+    });
+
+    await reconcileShipitFulfillments(container as never);
+
+    expect(ensureFulfillmentMock).toHaveBeenCalledTimes(1);
+    expect(ensureFulfillmentMock).toHaveBeenCalledWith(
+      container,
+      "order_1",
+    );
+
+    expect(persistFulfillmentMock).toHaveBeenCalledTimes(1);
+    expect(persistFulfillmentMock).toHaveBeenCalledWith(
+      container,
+      "ful_1",
     );
   });
 });

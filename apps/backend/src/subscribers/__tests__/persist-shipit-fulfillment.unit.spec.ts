@@ -10,8 +10,8 @@ describe("persist Shipit fulfillment subscriber", () => {
     jest.clearAllMocks();
   });
 
-  it("subscribes to fulfillment.created", () => {
-    expect(config).toEqual({ event: "fulfillment.created" });
+  it("subscribes to order.fulfillment_created", () => {
+    expect(config).toEqual({ event: "order.fulfillment_created" });
   });
 
   it("persists Shipit fulfillment metadata through the locking service", async () => {
@@ -62,8 +62,12 @@ describe("persist Shipit fulfillment subscriber", () => {
 
     await persistShipitFulfillment({
       event: {
-        name: "fulfillment.created",
-        data: { id: "ful_1" },
+        name: "order.fulfillment_created",
+        data: {
+          order_id: "order_1",
+          fulfillment_id: "ful_1",
+          no_notification: false,
+        },
       },
       container: { resolve },
     } as never);
@@ -115,8 +119,12 @@ describe("persist Shipit fulfillment subscriber", () => {
 
     await persistShipitFulfillment({
       event: {
-        name: "fulfillment.created",
-        data: { id: "ful_manual" },
+        name: "order.fulfillment_created",
+        data: {
+          order_id: "order_manual",
+          fulfillment_id: "ful_manual",
+          no_notification: false,
+        },
       },
       container: { resolve },
     } as never);
