@@ -1,7 +1,10 @@
 ﻿"use server"
 
 import { sdk } from "@lib/config"
+import { mapWithConcurrency } from "@lib/shipit/pickup-orchestration"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
+
+const BRANCH_DISCOVERY_CONCURRENCY = 4
 
 export type ShipitCommuneOption = {
   id: number
@@ -64,4 +67,59 @@ export async function listShipitCouriers() {
   })
 
   return response.couriers
+}
+
+function normalizeCommune(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+}
+
+export type ShipitBranchSelectionOption = {
+  courier: ShipitCourierOption
+  branch: ShipitBranchOfficeOption
+}
+
+export async function listShipitPickupBranches(city: string) {
+  const normalizedCity = normalizeCommune(city)
+
+  if (!normalizedCity) {
+    throw new Error("Shipit commune is required")
+  }
+
+  const [communes, couriers] = await Promise.all([
+    listShipitCommunes(),
+    listShipitCouriers(),
+  ])
+  const commune = communes.find(
+    (candidate) => normalizeCommune(candidate.name) === normalizedCity
+  )
+
+  if (!commune) {
+    throw new Error("Shipit commune not found")
+  }
+
+  const groups = await mapWithConcurrency(
+    couriers,
+    BRANCH_DISCOVERY_CONCURRENCY,
+    async (courier) => {
+      try {
+        return {
+          courier,
+          branches: await listShipitBranchOffices(courier.id, commune.id),
+        }
+      } catch {
+        return {
+          courier,
+          branches: [] as ShipitBranchOfficeOption[],
+        }
+      }
+    }
+  )
+
+  return groups.flatMap(({ courier, branches }) =>
+    branches.map((branch) => ({ courier, branch }))
+  )
 }

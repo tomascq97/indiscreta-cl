@@ -2,14 +2,16 @@
 
 import { Radio, RadioGroup } from "@headlessui/react"
 import { setShippingMethod } from "@lib/data/cart"
-import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
 import {
-  listShipitBranchOffices,
-  listShipitCommunes,
-  listShipitCouriers,
+  calculatePriceForShippingOption,
+  calculatePricesForShipitCouriers,
+} from "@lib/data/fulfillment"
+import {
+  listShipitPickupBranches,
   type ShipitBranchOfficeOption,
   type ShipitCourierOption,
 } from "@lib/data/shipit"
+import { uniqueCourierSelections } from "@lib/shipit/pickup-orchestration"
 import { esCl } from "@lib/translations/es-cl"
 import { convertToLocale } from "@lib/util/money"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
@@ -124,7 +126,6 @@ const Shipping: React.FC<ShippingProps> = ({
     cart.shipping_methods?.at(-1)?.shipping_option_id || null
   )
 
-  const [couriers, setCouriers] = useState<ShipitCourierOption[]>([])
   const [branches, setBranches] = useState<BranchSelection[]>([])
   const [selectedBranchKey, setSelectedBranchKey] = useState<string | null>(null)
   const [selectedBranchSnapshot, setSelectedBranchSnapshot] =
@@ -395,36 +396,9 @@ const Shipping: React.FC<ShippingProps> = ({
   ])
 
   useEffect(() => {
-    if (!shipitBranchOption || deliveryMode !== "branch") {
-      setCouriers([])
-      setBranches([])
-      return
-    }
-
-    let cancelled = false
-
-    listShipitCouriers()
-      .then((result) => {
-        if (!cancelled) {
-          setCouriers(result)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCouriers([])
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [shipitBranchOption, deliveryMode])
-
-  useEffect(() => {
     if (
       !shipitBranchOption ||
-      deliveryMode !== "branch" ||
-      !couriers.length
+      deliveryMode !== "branch"
     ) {
       setBranches([])
       setIsLoadingBranches(false)
@@ -441,58 +415,15 @@ const Shipping: React.FC<ShippingProps> = ({
 
     let cancelled = false
 
-    const normalize = (value: string) =>
-      value
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase()
-
     setIsLoadingBranches(true)
     setBranches([])
     setBranchPrices({})
     setBranchQuoteStatus({})
 
-    listShipitCommunes()
-      .then(async (communes) => {
-        const commune = communes.find(
-          (candidate) => normalize(candidate.name) === normalize(city)
-        )
-
-        if (!commune) {
-          throw new Error("Shipit commune not found")
-        }
-
-        const groups = await Promise.all(
-          couriers.map(async (courier) => {
-            try {
-              const courierBranches = await listShipitBranchOffices(
-                courier.id,
-                commune.id
-              )
-
-              return {
-                courier,
-                branches: courierBranches,
-              }
-            } catch {
-              return {
-                courier,
-                branches: [] as ShipitBranchOfficeOption[],
-              }
-            }
-          })
-        )
-
+    listShipitPickupBranches(city)
+      .then((pickupBranches) => {
         if (!cancelled) {
-          setBranches(
-            groups.flatMap(({ courier, branches }) =>
-              branches.map((branch) => ({
-                courier,
-                branch,
-              }))
-            )
-          )
+          setBranches(pickupBranches)
         }
       })
       .catch(() => {
@@ -512,43 +443,36 @@ const Shipping: React.FC<ShippingProps> = ({
   }, [
     shipitBranchOption,
     deliveryMode,
-    couriers,
     cart.shipping_address?.city,
   ])
+
+  const branchQuoteInputKey = useMemo(
+    () =>
+      (cart.items ?? [])
+        .map((item) => `${item.id}:${item.variant_id}:${item.quantity}`)
+        .sort()
+        .join("|"),
+    [cart.items]
+  )
+
   useEffect(() => {
     if (
       deliveryMode !== "branch" ||
       !shipitBranchOption ||
-      searchedBranches.length === 0
+      branches.length === 0
     ) {
       return
     }
 
     // Una selección representativa por courier.
     // La tarifa de retiro se valida por courier + destino.
-    const courierSelections = Array.from(
-      new Map(
-        searchedBranches.map((selection) => [
-          selection.courier.id,
-          selection,
-        ])
-      ).values()
-    )
+    const courierSelections = uniqueCourierSelections(branches)
 
-    const pendingCouriers = courierSelections.filter((selection) => {
-      const courierKey = `courier:${selection.courier.id}`
+    setBranchPrices({})
+    setBranchQuoteStatus(() => {
+      const next: Record<string, "loading"> = {}
 
-      return !branchQuoteStatus[courierKey]
-    })
-
-    if (!pendingCouriers.length) {
-      return
-    }
-
-    setBranchQuoteStatus((previous) => {
-      const next = { ...previous }
-
-      pendingCouriers.forEach(({ courier }) => {
+      courierSelections.forEach(({ courier }) => {
         next[`courier:${courier.id}`] = "loading"
       })
 
@@ -557,25 +481,13 @@ const Shipping: React.FC<ShippingProps> = ({
 
     let cancelled = false
 
-    Promise.allSettled(
-      pendingCouriers.map(async (selection) => {
-        const result = await calculatePriceForShippingOption(
-          shipitBranchOption.id,
-          cart.id,
-          buildBranchData(selection)
-        )
-
-        if (!result || !isFiniteAmount(result.amount)) {
-          throw new Error(
-            `Invalid Shipit quote for courier ${selection.courier.id}`
-          )
-        }
-
-        return {
-          courierId: selection.courier.id,
-          amount: result.amount,
-        }
-      })
+    calculatePricesForShipitCouriers(
+      shipitBranchOption.id,
+      cart.id,
+      courierSelections.map((selection) => ({
+        courierId: selection.courier.id,
+        data: buildBranchData(selection),
+      }))
     ).then((results) => {
       if (cancelled) {
         return
@@ -585,14 +497,14 @@ const Shipping: React.FC<ShippingProps> = ({
         const next = { ...previous }
 
         results.forEach((result) => {
-          if (result.status !== "fulfilled") {
+          if (result.status !== "done") {
             return
           }
 
           branches.forEach(({ courier, branch }) => {
-            if (courier.id === result.value.courierId) {
+            if (courier.id === result.courierId) {
               next[`${courier.id}:${branch.id}`] =
-                result.value.amount
+                result.amount
             }
           })
         })
@@ -603,11 +515,22 @@ const Shipping: React.FC<ShippingProps> = ({
       setBranchQuoteStatus((previous) => {
         const next = { ...previous }
 
-        results.forEach((result, index) => {
-          const courierId = pendingCouriers[index].courier.id
+        results.forEach((result) => {
+          next[`courier:${result.courierId}`] = result.status
+        })
 
-          next[`courier:${courierId}`] =
-            result.status === "fulfilled" ? "done" : "error"
+        return next
+      })
+    }).catch(() => {
+      if (cancelled) {
+        return
+      }
+
+      setBranchQuoteStatus((previous) => {
+        const next = { ...previous }
+
+        courierSelections.forEach(({ courier }) => {
+          next[`courier:${courier.id}`] = "error"
         })
 
         return next
@@ -620,10 +543,9 @@ const Shipping: React.FC<ShippingProps> = ({
   }, [
     deliveryMode,
     shipitBranchOption,
-    searchedBranches,
     branches,
     cart.id,
-    branchQuoteStatus,
+    branchQuoteInputKey,
   ])
   const handleEdit = () => {
     router.push(pathname + "?step=delivery", { scroll: false })
@@ -1336,7 +1258,10 @@ const Shipping: React.FC<ShippingProps> = ({
                           {visibleBranches.map((selection) => {
                             const key = `${selection.courier.id}:${selection.branch.id}`
                             const price = branchPrices[key]
-                            const quoteStatus = branchQuoteStatus[key]
+                            const quoteStatus =
+                              branchQuoteStatus[
+                                `courier:${selection.courier.id}`
+                              ]
                             const isSelected = selectedBranchKey === key
 
                             return (
